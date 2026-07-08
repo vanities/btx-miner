@@ -14,8 +14,8 @@ miner can update or restart without ever touching `btxd`.
 # install + start mining a pool (repeat --pool for automatic failover to a backup):
 curl -fsSL https://raw.githubusercontent.com/vanities/matador-miner/main/install.sh | bash
 matador-miner --mode pool \
-  --pool stratum+tcp://stratum.minebtx.com:3333 \
-  --pool stratum+tcp://stratum.bitminerpool.xyz:3333 \
+  --pool stratum+tcp://btx-us-east.lproute.com:8660 \
+  --pool ssl://ninjaraider.com:44921 \
   --worker rig1 --payoutaddress btx1zcf4z36asua8ylchysphgwfgyfr8267vvznth826epden7lar4fnqvy9gzv
 ```
 
@@ -103,8 +103,8 @@ is needed. **AMD is the one exception: add `--backend hip`.**
 ```bash
 # Pool - no node required (2nd --pool is a backup; matador fails over if the 1st is down):
 matador-miner --mode pool \
-  --pool stratum+tcp://stratum.minebtx.com:3333 \
-  --pool stratum+tcp://stratum.bitminerpool.xyz:3333 \
+  --pool stratum+tcp://btx-us-east.lproute.com:8660 \
+  --pool ssl://ninjaraider.com:44921 \
   --worker rig1 --payoutaddress btx1zcf4z36asua8ylchysphgwfgyfr8267vvznth826epden7lar4fnqvy9gzv
 
 # Solo - against your own btxd (v0.32.12+, RPC on); keep 100% of every block, no fee:
@@ -125,6 +125,26 @@ cp config.example.nvidia.json matador.json   # or config.example.amd.json / .mac
 $EDITOR matador.json                          # set payout address + worker
 matador-miner                                 # auto-loads ./matador.json
 ```
+
+## Pools
+
+Exact, tested URLs (verified with this miner, July 2026). Use them verbatim; repeat `--pool`
+to build a failover chain, matador walks the list top to bottom if one goes down.
+
+| pool | plain TCP | TLS (encrypted) |
+|---|---|---|
+| LuckyPool US East | `stratum+tcp://btx-us-east.lproute.com:8660` | - |
+| LuckyPool US Central | `stratum+tcp://btx-us-central.lproute.com:8660` | - |
+| LuckyPool US Chicago | `stratum+tcp://btx-us-ord.lproute.com:8660` | - |
+| LuckyPool EU | `stratum+tcp://btx-eu.lproute.com:8660` | - |
+| ninjaraider | `stratum+tcp://ninjaraider.com:44920` | `ssl://ninjaraider.com:44921` |
+| minebtx | `stratum+tcp://stratum.minebtx.com:3333` | - |
+
+URL schemes: `stratum+tcp://` (or a bare `host:port`) is a plain TCP connection.
+`ssl://`, `tls://`, `stratum+ssl://`, and `stratum+tls://` all mean TLS-encrypted
+(v0.8.34+); the port must be the pool's TLS port, they are not interchangeable with the
+plain port. Pool dialect (classic stratum vs login-style, used by LuckyPool and
+ninjaraider) is auto-detected, no flag needed.
 
 ## Install in detail
 
