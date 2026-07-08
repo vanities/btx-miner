@@ -85,6 +85,26 @@ rankings, methodology, and AMD + legacy notes. To sort by any column yourself, o
 searchable table). Reproduce with `scripts/vast-bench.sh`. Your numbers welcome - see
 [Help wanted](#help-wanted).
 
+## How it compares
+
+Head-to-head against every current BTX miner: same RTX 5090, same pool, same wallet, stock
+clocks and power limit (no OC on any arm), interleaved 8-minute runs on July 7, 2026. Latest
+release of each miner at test time.
+
+| miner | version | rate | power | vs matador |
+|---|---|--:|--:|--:|
+| **matador** | v0.8.34 | **24.0 kH/s** | 560W | - |
+| nekominer | v0.11.41 | 22.0 kH/s | 557W | -8% |
+| Btxforge | multiV2.0 | 21.6 kH/s | 575W | -10% |
+| racer | 0.5.3 | 21.4 kH/s | 575W | -11% |
+| SRBMiner-Multi | 3.4.3 | 21.4 kH/s | 575W | -11% |
+
+All runs submitted real shares with 0 rejects. Rates are each miner's own reported
+steady-state hashrate; network difficulty drifted during the session, so treat single
+percentage points as noise and the ordering as the result. matador also leads on efficiency
+(nonce/s per watt) and stacks further gains from its built-in GPU tuning (clock/memory
+offsets, power limit, fan) which is applied automatically when it runs as root.
+
 ## Quick start
 
 **1. Install** (Linux one-liner: fetches the latest release, verifies the sha256, installs to
