@@ -326,8 +326,23 @@ Environment=BTX_MATMUL_CPU_SCAN_AHEAD=1
 Environment=BTX_MATMUL_CPU_SCAN_AHEAD_THREADS=24
 ```
 
-On HiveOS set the same variables in the flight sheet (**Setup Miner Config -> Env**); see
-[hiveos/](hiveos/).
+On HiveOS there is no env field for a custom miner, and these are environment variables
+rather than miner flags, so putting one in **Extra config arguments** makes the miner exit
+with `[args] unknown argument` instead of mining. Export it in the package launcher over
+Hive Shell:
+
+```bash
+cd /hive/miners/custom/matador-miner
+sed -i '/^export BTX_MATMUL_CPU_SCAN_AHEAD=/d' h-run.sh          # clear any previous setting
+sed -i '/^stdbuf /i export BTX_MATMUL_CPU_SCAN_AHEAD=0' h-run.sh # 0 disables
+miner restart
+```
+
+Re-running that is safe, and rerunning it with a different value changes the setting. The
+edit is overwritten when the package is reinstalled (when you point the flight sheet's
+Installation URL at a newer release), so reapply it after an update. Check the auto-gate
+decision first with `grep cpu-ahead /var/log/miner/custom/custom.log`; on most multi-GPU
+rigs it never enabled and there is nothing to turn off. See [hiveos/](hiveos/).
 
 ### Tuning it
 
