@@ -201,15 +201,15 @@ flight sheet with miner **Custom**, click **Setup Miner Config**, and fill:
 | Field | Value |
 |---|---|
 | Miner name | `matador-miner` |
-| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.8.25/matador-miner-0.8.25.tar.gz` |
+| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.8.43/matador-miner-0.8.43.tar.gz` |
 | Hash algorithm | `btx` |
 | Wallet and worker template | `%WAL%.%WORKER_NAME%` |
 | Pool URL | `stratum+tcp://stratum.minebtx.com:3333` |
 | Pass | `x` |
 | Extra config arguments | optional matador CLI flags, e.g. `--no-gpu-suffix` |
 
-Set the flight sheet wallet to your BTX address (`btx1...`). An example flight sheet JSON
-is in [docs/hiveos-flight-sheet.example.json](docs/hiveos-flight-sheet.example.json).
+Set the flight sheet wallet to your BTX address (`btx1...`). Ready to import flight sheets,
+one per BTX pool, are in [hiveos/](hiveos/).
 
 - Mines on **all GPUs**, one pool worker per card (`rig-gpu0`, `rig-gpu1`, ...). Add
   `--no-gpu-suffix` to report the whole rig as a single worker, or `--gpus 0,1` to pin cards.
@@ -219,6 +219,9 @@ is in [docs/hiveos-flight-sheet.example.json](docs/hiveos-flight-sheet.example.j
   the HiveOS dashboard; the JSON status API stays available on the rig at `127.0.0.1:4060`.
 - Works with both stratum and login-style pools. Solo-through-pool: use
   `solo:%WAL%.%WORKER_NAME%` as the template where the pool supports it.
+- TLS pools work from v0.8.43 on: give the Pool URL an `ssl://`, `tls://`, `stratum+ssl://`
+  or `stratum+tls://` scheme, for example `ssl://ninjaraider.com:44921`. Certificates are
+  verified; add `--pool-tls-insecure` for a pool with a self-signed certificate.
 - Under HiveOS the self-updater is off (the flight sheet owns the install). To update, point
   the Installation URL at the newer release tar.gz and reapply the flight sheet.
 

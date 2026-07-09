@@ -1,0 +1,26 @@
+{
+  "name": "BTXP_BTX_matador",
+  "isFavorite": false,
+  "items": [
+    {
+      "coin": "BTX",
+      "pool_ssl": false,
+      "pool_urls": [
+        "btx-pool.com:3334"
+      ],
+      "dpool_ssl": false,
+      "miner": "custom",
+      "miner_alt": "matador-miner",
+      "miner_config": {
+        "url": "stratum://btx-pool.com:3334",
+        "algo": "btx",
+        "pass": "x",
+        "miner": "matador-miner",
+        "template": "%WAL%.%WORKER_NAME%",
+        "install_url": "https://github.com/vanities/matador-miner/releases/download/v0.8.43/matador-miner-0.8.43.tar.gz",
+        "user_config": ""
+      },
+      "pool_geo": []
+    }
+  ]
+}
