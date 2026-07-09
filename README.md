@@ -266,6 +266,7 @@ Tune or disable: `--update-interval-s <sec>` (`0` = startup-only), `--update-cha
 | `gpus` / `--gpus 0,1,2` | first GPU | multi-GPU fan-out; each card gets its own worker suffix + API port |
 | `backend` / `--backend` | auto | `cuda` / `metal` / `hip` / `rocm` / `cpu` - only AMD needs it set |
 | `pools` / `--pool` | - | one endpoint or an ordered failover list (pool mode) |
+| `BTX_MATMUL_CPU_SCAN_AHEAD` (env) | auto | CPU scan-ahead: `0` disables, `1` forces on - see [below](#cpu-scan-ahead) |
 
 Full config keys and the systemd unit are in
 [`docs/matador-standalone-ops.md`](docs/matador-standalone-ops.md). Example configs:
@@ -278,6 +279,64 @@ Pool: **[minebtx](https://minebtx.com/)** is the default (the examples use
 [dexbtx/minebtx source](https://github.com/dexbtx/minebtx). Any dexbtx-style pool works too,
 e.g. [bitminerpool.xyz](https://bitminerpool.xyz/#miners) - just point `--pool` at its stratum
 endpoint.
+
+## CPU scan-ahead
+
+Your GPU does the mining, but on most rigs the CPU spends its day idle. **CPU scan-ahead**
+puts those spare cores to work searching nonces alongside the card, worth a few percent extra
+hashrate for free. It is controlled by environment variables rather than flags, so it can be
+set per-rig without touching the config file.
+
+**It turns itself on** when the host looks safe for it: one GPU, an x86 CPU with AVX2 or
+AVX-512, at least **16 usable cores**, and low CPU steal (under 5%, i.e. not a contended
+cloud VM). It then takes **half** the cores and leaves the other half to keep the GPU fed.
+Multi-GPU rigs, small CPUs, cgroup-limited containers, and noisy shared VMs get it **off** by
+default - those are exactly the hosts where stealing cores from GPU feeding *loses* hashrate.
+
+Either way the miner says so once, on startup:
+
+```
+[cpu-ahead] auto-enabled (half cores): 16 threads of 32 effective cores (hw=32, steal=0.0%)
+[cpu-ahead] auto-OFF (multi-GPU host; effective cores=32, hw=32, gpus=4, steal=0.0%) - BTX_MATMUL_CPU_SCAN_AHEAD=1 forces on
+```
+
+### The knobs
+
+| Variable | Default | Effect |
+|---|---|---|
+| `BTX_MATMUL_CPU_SCAN_AHEAD=0` | - | **Disable** it entirely. |
+| `BTX_MATMUL_CPU_SCAN_AHEAD=1` | - | **Force on**, ignoring every auto gate, at `cores - 2` threads. Use on a rig the gates declined but whose CPU you know is free. |
+| `BTX_MATMUL_CPU_SCAN_AHEAD_THREADS=N` | half cores (auto) / `cores-2` (forced) | Use exactly **N** threads. The direct way to increase or decrease it. |
+| `BTX_MATMUL_CPU_SCAN_AHEAD_AUTO_CAP=N` | `0` (uncapped) | Ceiling on the *auto* thread count. Keeps auto-enable but stops it taking half of a very large CPU. |
+| `BTX_MATMUL_CPU_SCAN_AHEAD_MIN_CORES=N` | `16` | Cores required before auto-enable. Lower it to let a 12-core box opt in. |
+| `BTX_MATMUL_CPU_SCAN_AHEAD_MAX_STEAL_PCT=N` | `5` | Max CPU steal % tolerated before auto-enable declines. |
+
+Threads are counted against the cores the process **actually owns** - the miner reads the
+affinity mask and cgroup quota, so a 10-core container on an 80-core host sizes to 10, not 80.
+
+```bash
+# turn it off
+BTX_MATMUL_CPU_SCAN_AHEAD=0 matador-miner --mode pool --pool ... --payoutaddress btx1...
+
+# force it on with 24 threads (dedicated single-GPU rig, CPU otherwise idle)
+BTX_MATMUL_CPU_SCAN_AHEAD=1 BTX_MATMUL_CPU_SCAN_AHEAD_THREADS=24 matador-miner ...
+
+# systemd: add to the unit's [Service] section, then `systemctl daemon-reload && restart`
+Environment=BTX_MATMUL_CPU_SCAN_AHEAD=1
+Environment=BTX_MATMUL_CPU_SCAN_AHEAD_THREADS=24
+```
+
+On HiveOS set the same variables in the flight sheet (**Setup Miner Config -> Env**); see
+[hiveos/](hiveos/).
+
+### Tuning it
+
+More threads is not always more hashrate - past a point the scan threads take cores away from
+feeding the GPU, and the card goes hungry. **Tune against `nonce/s` on the `[stats]` line, not
+against CPU usage.** Raise `_THREADS` a few at a time, give it a couple of minutes to settle,
+and keep the value where `nonce/s` peaks; if it *drops*, you have gone past the knee - back
+down. On a rig that also does real work (a workstation, a node), leave scan-ahead off or cap
+it low, since it will happily eat every core you give it.
 
 ## Run a fleet
 
