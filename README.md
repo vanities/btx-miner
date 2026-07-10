@@ -53,29 +53,40 @@ matador-miner --mode pool \
 > config needed: `install.sh` auto-routes old GPUs to the `-legacy` asset, and the build enables the
 > older-GPU path itself.
 
-**Measured rates** - popular cards below; the **[full 39-GPU benchmark](docs/gpu-benchmarks.md)**
-covers every model. matador `--mode pool` on rented Vast.ai instances at stock power, v0.6.8, June
-2026; ~80-100% util, 0 rejects. Sorted by **efficiency** (`nonce/s per W`); `value` = thousands of nonce/s per Vast `$/hr`.
+**Measured rates** - a 19-card fleet sweep, one rented Vast.ai instance per card, matador
+`--mode pool` at stock clocks and stock power limit, July 8-9, 2026 (v0.8.38-v0.8.42).
+Every number is a real pool run with **0 rejected shares**; each row is the best steady-state
+run for that card. Sorted by throughput.
 
-| GPU | nonce/s | Power | nonce/s per W | Vast $/hr | value |
-|---|--:|--:|--:|--:|--:|
-| RTX 4070 Ti | 9.3k | ~200W | ~46 | ~0.24 | **38.5** |
-| RTX 5090 (`sm_120`) | 32.3k | ~577W | ~56 | ~0.39 | **83.2** |
-| RTX 4090 (`sm_89`) | 21.6k | ~413W | ~52 | ~0.35 | **62.1** |
-| RTX 5070 | 10.6k | ~238W | ~45 | ~0.17 | **60.9** |
-| H100 SXM (`sm_90`) | 15.8k | ~383W | ~41 | ~1.92 | **8.2** |
-| RTX 4080 | 14.6k | ~291W | ~50 | ~0.34 | **43.5** |
-| A100 SXM4 (`sm_80`) | 10.9k | ~250W | ~44 | ~0.55 | **19.8** |
-| RTX 3090 | 9.1k | ~296W | ~31 | ~0.13 | **70.2** |
-| RTX 3070 | 6.2k | ~232W | ~27 | ~0.09 | **71.1** |
-| RTX 3060 (`sm_86`) | 2.2k | ~64W | ~34 | ~0.06 | **39.9** |
-| Apple M4 Max | Metal: ~1.1k-1.3k | - | - | - | - |
+| GPU | nonce/s | Power | nonce/s per W |
+|---|--:|--:|--:|
+| RTX 5090 (`sm_120`) | 21.2k | ~404W | ~53 |
+| RTX 4090 (`sm_89`) | 16.8k | ~420W | ~40 |
+| RTX 4080 | 11.2k | ~297W | ~38 |
+| RTX 5080 | 10.8k | ~231W | ~47 |
+| RTX 5070 Ti | 10.0k | ~245W | ~41 |
+| RTX 4070 Ti | 7.9k | ~237W | ~33 |
+| RTX 5070 | 7.1k | ~185W | ~38 |
+| RTX 3080 Ti (`sm_86`) | 7.0k | ~358W | ~20 |
+| RTX 4070 | 6.4k | ~189W | ~34 |
+| RTX 3080 | 5.4k | ~237W | ~23 |
+| RTX 4060 Ti | 4.7k | ~141W | ~33 |
+| RTX 3070 Ti | 4.4k | ~211W | ~21 |
+| RTX 3070 | 4.3k | ~223W | ~19 |
+| RTX 2080 Ti (`-legacy`) | 4.0k | ~218W | ~18 |
+| RTX 3060 Ti | 3.5k | ~143W | ~24 |
+| RTX 4060 | 3.1k | - | - |
+| RTX 3060 | 2.7k | ~147W | ~18 |
+| RTX 2060 (`-legacy`) | 2.0k | ~115W | ~18 |
+| GTX 1080 Ti (`-legacy`) | 1.5k | ~167W | ~9 |
 
-> **Measured on v0.6.8**, June 2026, and still current on **v0.7.1** - the v0.7.x releases left
-> NVIDIA Ampere+ throughput unchanged (they fixed the legacy GPU build and macOS Metal). Up roughly
-> **1.5x-2.0x** over the earlier pre-v0.5.0 rates (the RTX 5090 went from 18.8k to **32.3k nonce/s**).
-> Each card is a single steady-state sample and Vast `$/hr` float with the marketplace, so read this
-> as a snapshot, not a leaderboard.
+> **Read this table on its own.** `nonce/s` scales inversely with network difficulty, and BTX
+> difficulty has climbed sharply since the earlier June table (the same 5090 that read 32.3k in
+> June reads ~21k today while mining *more* efficiently), so compare cards within one snapshot,
+> never across dates. Cloud instances are also the pessimistic case: on a dedicated rig run as
+> root, matador applies its built-in GPU tuning automatically and the same 5090 sustains ~24k.
+> RTX 3090 numbers are being re-validated and are omitted for now; Apple Silicon and the other
+> 20 cards are in the [full benchmark](docs/gpu-benchmarks.md) (June 2026 snapshot).
 
 Consumer cards win on value by 2-4x: this PoW is integer/ALU work, so the AI-datacenter premium
 (A100, H100, RTX 6000) buys tensor cores it can't use. **See
