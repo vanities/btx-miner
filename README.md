@@ -54,7 +54,7 @@ matador-miner --mode pool \
 > older-GPU path itself.
 
 **Measured rates** - a 19-card fleet sweep, one rented Vast.ai instance per card, matador
-`--mode pool` at stock clocks and stock power limit, July 8-9, 2026 (v0.8.38-v0.8.42).
+`--mode pool` at stock clocks and stock power limit, July 8-9, 2026 (v0.8.38-v0.8.45).
 Every number is a real pool run with **0 rejected shares**; each row is the best steady-state
 run for that card. Sorted by throughput.
 
@@ -62,8 +62,8 @@ run for that card. Sorted by throughput.
 |---|--:|--:|--:|
 | RTX 5090 (`sm_120`) | 21.2k | ~404W | ~53 |
 | RTX 4090 (`sm_89`) | 16.8k | ~420W | ~40 |
+| RTX 5080 | 11.4k | ~284W | ~40 |
 | RTX 4080 | 11.2k | ~297W | ~38 |
-| RTX 5080 | 10.8k | ~231W | ~47 |
 | RTX 5070 Ti | 10.0k | ~245W | ~41 |
 | RTX 4070 Ti | 7.9k | ~237W | ~33 |
 | RTX 5070 | 7.1k | ~185W | ~38 |
