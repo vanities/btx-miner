@@ -39,7 +39,7 @@ store. A pool with a self-signed or expired certificate needs `--pool-tls-insecu
 The stratum dialect (classic `mining.subscribe` or JSON-RPC `login`) is detected at
 handshake, so no pool needs extra configuration.
 
-Requires v0.8.43 or newer: earlier packages dropped the scheme, so an `ssl://` sheet
+Requires v0.8.53 or newer: earlier packages dropped the scheme, so an `ssl://` sheet
 connected in plaintext and the pool never answered.
 
 ## Pool endpoints
