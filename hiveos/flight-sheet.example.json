@@ -18,7 +18,7 @@
         "pass": "x",
         "miner": "matador-miner",
         "template": "%WAL%.%WORKER_NAME%",
-        "install_url": "https://github.com/vanities/matador-miner/releases/download/v0.8.53/matador-miner-0.8.53.tar.gz",
+        "install_url": "https://github.com/vanities/matador-miner/releases/download/v0.8.58/matador-miner-0.8.58.tar.gz",
         "user_config": ""
       },
       "pool_geo": []

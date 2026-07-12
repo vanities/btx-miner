@@ -212,7 +212,7 @@ flight sheet with miner **Custom**, click **Setup Miner Config**, and fill:
 | Field | Value |
 |---|---|
 | Miner name | `matador-miner` |
-| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.8.53/matador-miner-0.8.53.tar.gz` |
+| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.8.58/matador-miner-0.8.58.tar.gz` |
 | Hash algorithm | `btx` |
 | Wallet and worker template | `%WAL%.%WORKER_NAME%` |
 | Pool URL | `stratum+tcp://stratum.minebtx.com:3333` |
