@@ -305,3 +305,13 @@ snapshot - open an issue with it plus your OS and driver version.
 Proprietary - Copyright (c) 2026 AM2 LLC. All rights reserved. See [LICENSE](LICENSE).
 Third-party components (btxchain/btx and its Bitcoin Core lineage) remain under the MIT License.
 matador-miner release binaries ship under their own end-user terms.
+
+## Verifying work
+
+Node operators can independently re-verify a block header, and pool operators can check that
+a submitted share did real work, with `matador-miner --verify`. It replays the episode using
+the same backend the solver uses, so the verifier cannot drift from the code that produced
+the work.
+
+See [docs/verification.md](docs/verification.md) for the commands and how to pull the inputs
+from a node.
