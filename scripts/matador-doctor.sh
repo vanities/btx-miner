@@ -101,7 +101,7 @@ if [ "$nv_present" = yes ] && [ -n "$nv_cuda" ]; then
     printf '  X  INCOMPATIBLE DRIVER\n'
     printf '     driver %s exposes CUDA %s max; matador %s needs CUDA %s (driver >= %s).%s\n' \
            "${nv_driver:-?}" "$nv_cuda" "$version" "$req_cuda" "$req_driver" "$req_note"
-    printf '     The CUDA runtime cannot initialize -> GPU stays at 0%%, nonce/s=0 (often SILENT).\n'
+    printf '     The CUDA runtime cannot initialize -> GPU stays at 0%%, ep/s=0 (often SILENT).\n'
     printf '     FIX (pick one):\n'
     printf '       1) Run on a host/driver >= %s (CUDA >= %s). On Vast, filter offers by CUDA version.\n' "$req_driver" "$req_cuda"
     printf '       2) Install the CUDA-12 build that runs on your driver:\n'
@@ -111,7 +111,7 @@ if [ "$nv_present" = yes ] && [ -n "$nv_cuda" ]; then
     printf '  OK driver %s exposes CUDA %s >= required CUDA %s (build %s). Driver is NOT the problem.\n' \
            "${nv_driver:-?}" "$nv_cuda" "$req_cuda" "$version"
     if [ "$running" = yes ]; then
-      printf '     Miner is up; check the nonce/s + backend sections below for a non-driver cause.\n'
+      printf '     Miner is up; check the ep/s + backend sections below for a non-driver cause.\n'
     fi
   fi
 elif [ "$nv_present" = no ] && [ "$(uname -s)" = Linux ]; then
@@ -188,7 +188,7 @@ def g(*p):
         x=(x or {}).get(k) if isinstance(x,dict) else None
     return x
 print(f"  status={d.get('status')} mode={d.get('mode')} backend={d.get('backend')} uptime={d.get('uptime_sec')}s")
-print(f"  nonces.total={g('nonces','total')} batch={g('nonces','batch_size')}")
+print(f"  episodes={g('nonces','rc_episodes')} windows={g('nonces','solve_windows')} rc_active={g('nonces','rc_active')}")
 print(f"  shares: accepted={g('shares','accepted')} rejected={g('shares','rejected')} stale={g('shares','stale')}")
 for i,gpu in enumerate(d.get('gpu_runtime') or []):
     print(f"  gpu[{i}] util={gpu.get('util_pct')}% power={gpu.get('power_w')}W temp={gpu.get('temp_c')}C")
@@ -228,7 +228,7 @@ if have journalctl; then
     out="$(journalctl $scope -u matador-miner -n 60 --no-pager 2>/dev/null)"
     [ -n "$out" ] && {
       printf '  journalctl %s -u matador-miner (key lines):\n' "${scope:-system}"
-      printf '%s\n' "$out" | grep -iE '\[backend\]|\[solver\]|\[solve\]|cuda|error|warn|nonce/s|insufficient|driver' \
+      printf '%s\n' "$out" | grep -iE '\[backend\]|\[solver\]|\[solve\]|cuda|error|warn|ep/s|rc-active|insufficient|driver' \
         | tail -25 | redact | sed 's/^/    /'
       log_dumped="yes"; break
     }

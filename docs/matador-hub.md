@@ -49,7 +49,7 @@ Each worker must expose its API on a reachable address. Locally that is loopback
 curl -s http://127.0.0.1:4070/fleet | python3 -m json.tool
 ```
 
-`totals` includes `online`/`offline`, summed `nonce_per_s` (computed by the hub from
+`totals` includes `online`/`offline`, summed `episode_per_s` (computed by the hub from
 each rig's batched-attempt counter delta - the same source the miner heartbeat uses),
 `power_w`, `accepted`/`rejected`/`stale` shares, and `behind` (rigs whose `latest_seen`
 tag differs from their running `current` - i.e. an auto-update is pending). Each `rigs[]`
@@ -86,5 +86,5 @@ sudo systemctl enable --now matador-hub.service
 - A rig that stops responding keeps its last-known row but flips to `online:false` after
   `--offline-after-s` (default 30s); its rate drops to 0.
 - The hub is read-only: it never sends commands to rigs, only reads `/summary`.
-- `nonce_per_s` needs two polls to establish a rate, so it reads 0 for the first
+- `episode_per_s` needs two polls to establish a rate, so it reads 0 for the first
   `poll_interval_s` after a rig appears.

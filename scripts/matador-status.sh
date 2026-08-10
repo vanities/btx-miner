@@ -40,7 +40,7 @@ if pools:
     pool = pools[0]
     print(f"pool: {pool.get('label') or 'primary'} {pool.get('host')}:{pool.get('port')} ({len(pools)} configured)")
 print(f"shares: accepted={accepted} rejected={rejected} stale={stale} dev={dev}")
-print(f"nonces: total={nonces.get('total', 0)} batch={nonces.get('batch_size', '?')} async={nonces.get('async_prepare', '?')}")
+print(f"episodes: {nonces.get('rc_episodes', 0)} windows={nonces.get('solve_windows', '?')} rc_active={nonces.get('rc_active', '?')}")
 print(
     "watchdog: "
     f"{watchdog_status} reject_streak={watchdog.get('reject_streak', '?')} "

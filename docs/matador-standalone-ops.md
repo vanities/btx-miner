@@ -16,13 +16,11 @@ Example pool config:
 
 ```bash
 cp config.example.nvidia.json matador.json   # NVIDIA/CUDA
-# cp config.example.amd.json matador.json    # AMD/ROCm sidecar
-# cp config.example.mac.json matador.json    # Apple Silicon/Metal
 $EDITOR matador.json                         # set your real P2MR payout address
 ./bin/matador-miner                          # auto-loads ./matador.json
 ```
 
-The source tree also keeps these templates under `docs/` for packagers: `config.example.nvidia.json`, `config.example.amd.json`, and `config.example.mac.json`.
+The source tree also keeps this template under `docs/` for packagers: `config.example.nvidia.json`. The AMD and Apple templates were removed when BTX activated v4 (ENC_RC), which neither backend can mine.
 
 Supported JSON keys mirror the existing CLI/env surface:
 

@@ -20,22 +20,21 @@ else die "need sha256sum or shasum to verify the download"; fi
 
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) asset_pattern='linux-x86_64' ;;
-  Darwin-arm64) asset_pattern='macos-arm64' ;;
-  *) die "unsupported platform $(uname -s)-$(uname -m); expected Linux x86_64 or macOS arm64" ;;
+  Darwin-*) die "macOS cannot mine BTX. ENC_RC needs NVIDIA tensor cores (Ampere or newer)." ;;
+  *) die "unsupported platform $(uname -s)-$(uname -m); expected Linux x86_64" ;;
 esac
 
-# GPU-arch routing (Linux/NVIDIA): the main CUDA-13 build needs compute capability >= 8.0
-# (Ampere+). If the highest installed GPU is older (Pascal/Volta/Turing, < 8.0), route to the
-# experimental -legacy asset when the release ships one. LEGACY=1 forces it; LEGACY=0 opts out.
-want_legacy="${LEGACY:-}"
-if [ -z "$want_legacy" ] && [ "$asset_pattern" = linux-x86_64 ] && command -v nvidia-smi >/dev/null 2>&1; then
+# GPU-arch gate. ENC_RC (v4) is a tensor-core workload, so compute capability >= 8.0
+# (Ampere or newer) is a hard requirement, not a preference: an older card cannot mine it at
+# any speed. Stop here with a useful message instead of installing a binary that will never
+# find a share. SKIP_GPU_CHECK=1 bypasses (e.g. installing on a box with no GPU attached yet).
+if [ "${SKIP_GPU_CHECK:-}" != 1 ] && command -v nvidia-smi >/dev/null 2>&1; then
   maxcc="$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | tr -d ' ' | sort -g | tail -1)"
   if [ -n "$maxcc" ] && awk "BEGIN{exit !($maxcc < 8.0)}" 2>/dev/null; then
-    want_legacy=1
-    log "GPU compute capability $maxcc is < 8.0 (Pascal/Volta/Turing); the main build can't run on it"
+    die "GPU compute capability $maxcc is below 8.0 (Pascal/Volta/Turing). BTX needs Ampere or
+     newer tensor cores; this card cannot mine the chain at any speed."
   fi
 fi
-[ "$want_legacy" = 0 ] && want_legacy=""
 
 if [ -n "${VERSION:-}" ]; then
   api="https://api.github.com/repos/$REPO/releases/tags/$VERSION"
@@ -46,18 +45,8 @@ fi
 
 log "resolving release: $api"
 json="$(curl -fsSL "$api")" || die "cannot reach the GitHub API (is a release published yet?)"
-if [ -n "$want_legacy" ]; then
-  # `|| true`: no -legacy match must fall through to the helpful die, not silently exit via set -e/pipefail
-  url="$(printf '%s' "$json" | grep -oE '"browser_download_url": *"[^"]+-legacy-'"$asset_pattern"'"' | cut -d'"' -f4 | head -1 || true)"
-  if [ -n "$url" ]; then
-    log "routing to the EXPERIMENTAL -legacy build for your GPU (Pascal/Volta/Turing; unvalidated - please report results)"
-  else
-    die "your GPU needs the -legacy build, but this release has none. Grab the experimental legacy asset from https://github.com/$REPO/releases and run it with --no-auto-update."
-  fi
-else
-  # main asset matches the platform but NOT the -legacy- variant published beside it
-  url="$(printf '%s' "$json" | grep -oE '"browser_download_url": *"[^"]+'"$asset_pattern"'"' | grep -v -- '-legacy-' | cut -d'"' -f4 | head -1 || true)"
-fi
+# `|| true`: no match must fall through to the helpful die, not exit silently via set -e/pipefail.
+url="$(printf '%s' "$json" | grep -oE '"browser_download_url": *"[^"]+'"$asset_pattern"'"' | cut -d'"' -f4 | head -1 || true)"
 [ -n "$url" ] || die "no $asset_pattern binary asset found in that release"
 asset="$(basename "$url")"
 
