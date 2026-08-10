@@ -85,4 +85,4 @@ fi
 log "installed -> $dst/matador-miner"
 case ":$PATH:" in *":$dst:"*) ;; *) log "NOTE: add $dst to your PATH";; esac
 log "next: matador-miner --help"
-log "pool example: matador-miner --mode pool --pool stratum+tcp://stratum.minebtx.com:3333 --pool stratum+tcp://stratum.bitminerpool.xyz:3333 --worker rig1 --payoutaddress btx1zcf4z36asua8ylchysphgwfgyfr8267vvznth826epden7lar4fnqvy9gzv --api --api-port 4060"
+log "pool example: matador-miner --mode pool --pool stratum+tcp://stratum.minebtx.com:3333 --pool stratum+tcp://stratum.btxbyronbay.com:3335 --worker rig1 --payoutaddress btx1zcf4z36asua8ylchysphgwfgyfr8267vvznth826epden7lar4fnqvy9gzv --api --api-port 4060"
