@@ -167,7 +167,7 @@ one per BTX pool, are in [hiveos/](hiveos/).
 - Works with both stratum and login-style pools. Solo-through-pool: use
   `solo:%WAL%.%WORKER_NAME%` as the template where the pool supports it.
 - TLS pools work from v0.8.53 on: give the Pool URL an `ssl://`, `tls://`, `stratum+ssl://`
-  or `stratum+tls://` scheme, for example `ssl://ninjaraider.com:44921`. Certificates are
+  or `stratum+tls://` scheme, for example `ssl://your-pool.example:443`. Certificates are
   verified; add `--pool-tls-insecure` for a pool with a self-signed certificate.
 - Under HiveOS the self-updater is off (the flight sheet owns the install). To update, point
   the Installation URL at the newer release tar.gz and reapply the flight sheet.
