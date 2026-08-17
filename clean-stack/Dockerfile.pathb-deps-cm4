@@ -1,0 +1,27 @@
+# clean-stack release-build deps image: matador-build:pathb-deps + a modern CMake.
+#
+# WHY: the clean-stack release toolchain image matador-build:pathb-deps (CUDA
+# 13.3, built ad-hoc via `docker commit`, no Dockerfile) ships apt CMake 3.22.1
+# (Ubuntu 22.04), too old for the project's CUDA20 language dialect with nvcc
+# 13.3 -- `cmake` configure fails with "CMake does not know the compile flags to
+# use to enable CUDA20". This layers the proven CMake 4.3.2 on top. CUDA 13.3
+# toolchain is unchanged (per the hard rule), so the byte-exact digest
+# (1dad86f1...) is unaffected -- it is integer M31/SHA math, toolchain-invariant.
+#
+# BUILD (on pc, where the base images already live):
+#   docker build -t matador-build:pathb-deps-cm4 -f clean-stack/Dockerfile.pathb-deps-cm4 clean-stack
+#
+# build-clean-rel.sh defaults IMG to the resulting matador-build:pathb-deps-cm4.
+
+# Stage 1: a known-good CMake 4.3.2 (pip-wheel install that lives in the 13.2.1
+# deps image). pathb-deps has no curl/pip, so copy the self-contained wheel data
+# dir rather than fetching over the network.
+FROM matador-build:deps-2204-cuda1321-blas AS cm
+
+# Stage 2: the real release base (CUDA 13.3) with that CMake dropped on PATH.
+FROM matador-build:pathb-deps
+COPY --from=cm /usr/local/lib/python3.10/dist-packages/cmake/data /opt/cmake-4.3.2
+RUN ln -sf /opt/cmake-4.3.2/bin/cmake /usr/local/bin/cmake \
+ && ln -sf /opt/cmake-4.3.2/bin/ctest /usr/local/bin/ctest \
+ && ln -sf /opt/cmake-4.3.2/bin/cpack /usr/local/bin/cpack \
+ && cmake --version

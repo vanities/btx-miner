@@ -272,8 +272,11 @@ pays the dev address for ~36s of each hour, logged on entry and exit.
 
 - **Self-custody.** Solo submits to *your* `btxd` over localhost RPC and holds **no wallet keys**;
   rewards pay the `--payoutaddress` you provide.
-- **Closed-source binary.** **Verify the sha256** of every download before running it
-  (the bundle and one-liner do this for you). Use `LOG_LEVEL=debug` for troubleshooting.
+- **Open source, reproducible.** The full solver is in [`clean-stack/`](clean-stack/); build it
+  yourself with [BUILDING.md](BUILDING.md) and check it against the ENC_RC episode golden. You do
+  not have to take our word for what the binary does. **Verify the sha256** of every download
+  before running it anyway (the bundle and one-liner do this for you). Use `LOG_LEVEL=debug` for
+  troubleshooting.
 - **Loopback by default.** The status API binds `127.0.0.1`; only expose it on a LAN/VPN you
   control.
 
@@ -297,9 +300,15 @@ snapshot - open an issue with it plus your OS and driver version.
 
 ## License
 
-Proprietary - Copyright (c) 2026 AM2 LLC. All rights reserved. See [LICENSE](LICENSE).
-Third-party components (btxchain/btx and its Bitcoin Core lineage) remain under the MIT License.
-matador-miner release binaries ship under their own end-user terms.
+MIT - Copyright (c) 2026 AM2 LLC. See [LICENSE](LICENSE).
+
+matador-miner was closed-source through v0.9.25 and is now MIT, the same license as
+`btxchain/btx` and its Bitcoin Core lineage, so anything here can be taken upstream or into
+another miner without asking.
+
+The vendored consensus subset under `clean-stack/core/vendor/` keeps its own upstream MIT
+notices; [COPYING](COPYING) holds the text those headers reference. `tinyformat.h` is
+Boost-1.0. Full inventory in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Verifying work
 

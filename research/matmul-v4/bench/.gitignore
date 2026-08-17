@@ -1,0 +1,10 @@
+# compiled bench artifacts
+v4_microbench
+v4_microbench_mt
+v4_proto
+*.o
+results/
+c13_proof
+c13_bench
+fp4_t24
+fp4_mma_sm120

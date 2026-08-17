@@ -1,0 +1,25 @@
+=== ENC-BMX4C reference golden (n=256 m=64, nonce=1) ===
+sigma      8308b2fa6265b55fcea5b7b2fce143f3b56e91d10ccad0cb71d7d03dea9e316a
+seed_a     907e62a8f1c9f7b5d13ef3b82414ef6a307663d8e7aa590460575de0fda1443d
+seed_b     473af78e22929dc60dde29a0412897e7fbf6eeb81318f7c80ee5b6129d552456
+seed_u     7eeb5a36ff36b56b6e896ccff560eb70cb4f5addfb6af238a76692450513eb4f
+seed_v     85d52e063a9a1a49a840075c60bc778325fe521876e9eae3a9897509be4780cf
+Ahat[0..7] -6 -6 3 0 3 4 3 6
+Bhat[0..7] -4 16 0 -3 48 -24 16 0
+U[0..7]    1 4 -2 2 -3 -1 0 4
+V[0..7]    -2 2 -1 -2 -4 0 0 0
+P[0..3]    643 -727 567 887
+Q[0..3]    78 -472 512 -1528
+Chat[0..3] 11697362 2305843009209742944 2323758 11768734
+payload_sz 32768 (expect 8*m*m=32768)
+payload[0..7] d2 7c b2 00 00 00 00 00
+DIGEST     4e192d8b907ad2d1383600d6f9b794c3ebf6387d577ca82333e75f544f54a9f9
+
+# --- pinned golden digests (numair's matmul_v4_bmx4_tests golden_digests case) ---
+# n=128 nonce=1: c94923800c8a5e344c88efdb2ec5ad07d80694c903af3dae1859ec14ade67b7c
+# n=256 nonce=1: 4e192d8b907ad2d1383600d6f9b794c3ebf6387d577ca82333e75f544f54a9f9
+# n=256 nonce=2: 91fe8b670ad84b6b37d6ce859133945f7d8181709f7dbdf8a64b8c7e25f4aeed
+# header = MakeV4Header(nonce,n): prevhash 51*32, merkleroot a3*32, seed_a 11*32, seed_b 22*32,
+#          nVersion 0x20000004, nTime 1770000000, nBits 0x207fffff, matmul_dim=n
+# refcheck-emit tool: pc:~/btx-measure/src/bmx4c-emit.cpp (+build-measure-cuda target). Re-run to
+# regenerate golden+intermediates any time numair tweaks the encoding (change-friendly foundation).

@@ -1,0 +1,1 @@
+NVIDIA GeForce RTX 5090, GPU-bf1c0574-668c-fa9e-45d7-a9ed2acdff60, 580.82.09, 600.00 W

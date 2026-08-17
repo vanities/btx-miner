@@ -1,0 +1,291 @@
+{
+  "tool": "rc-episode-harness",
+  "schema_version": 2,
+  "stub": false,
+  "device_id": "cpu-ref:14485569e807",
+  "backend": "cpu",
+  "backend_requested": "cpu",
+  "exact_gemm_inject": false,
+  "profile": "coupled",
+  "toy": false,
+  "medium": false,
+  "production_dims": false,
+  "coupled_production_v2": false,
+  "coupled_v3_ci": true,
+  "streamed_peak_bytes_est": 77952,
+  "resident_peak_bytes_est": 336000,
+  "mem_cap_bytes": 0,
+  "evidence_kind": "v3_ci_chrono_measured",
+  "wall_clock_provenance": "chrono_steady_clock_mine_coupled_puzzle",
+  "device_resident": false,
+  "native_path_eligible": false,
+  "params": {
+    "barriers": 4,
+    "lobes": 4,
+    "lobe_width": 64,
+    "bank_pages": 64,
+    "rows_per_lobe": 32,
+    "pages_per_barrier_lobe": 4,
+    "state_bytes": 8192
+  },
+  "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+  "modes_digest_match": true,
+  "mine_matches_cpu": true,
+  "mode_walls": [
+    {
+      "mode": "SequentialLobes",
+      "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+      "mine_matches_cpu": true,
+      "bank_s": 0.002329787,
+      "barriers_s": 0.005604646,
+      "wall_s": 0.008046800999999999,
+      "total_s": 0.008046800999999999,
+      "nonce_per_s": 124.2729874890655,
+      "phase_wall_s": 0.008046800999999999,
+      "reference_wall_s": {
+        "bank": 0.002282898,
+        "barriers": 0.005572966,
+        "total": 0.007970532000000001,
+        "label": "correctness_reference",
+        "provenance": "cpu_exactgemm_oracle"
+      },
+      "peak_rss_kib": 5172
+    },
+    {
+      "mode": "Checkpointed",
+      "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+      "mine_matches_cpu": true,
+      "bank_s": 0.002013983,
+      "barriers_s": 0.013463759,
+      "wall_s": 0.01558978,
+      "total_s": 0.01558978,
+      "nonce_per_s": 64.14458703073424,
+      "phase_wall_s": 0.01558978,
+      "reference_wall_s": {
+        "bank": 0.002030483,
+        "barriers": 0.01343429,
+        "total": 0.015575501,
+        "label": "correctness_reference",
+        "provenance": "cpu_exactgemm_oracle"
+      },
+      "peak_rss_kib": 5172
+    },
+    {
+      "mode": "Streamed",
+      "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+      "mine_matches_cpu": true,
+      "bank_s": 0.006294723,
+      "barriers_s": 0.008303085,
+      "wall_s": 0.014772395,
+      "total_s": 0.014772395,
+      "nonce_per_s": 67.69383028276728,
+      "phase_wall_s": 0.014772395,
+      "reference_wall_s": {
+        "bank": 0.001925344,
+        "barriers": 0.007619958,
+        "total": 0.00965628,
+        "label": "correctness_reference",
+        "provenance": "cpu_exactgemm_oracle"
+      },
+      "peak_rss_kib": 5172
+    },
+    {
+      "mode": "Resident",
+      "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+      "mine_matches_cpu": true,
+      "bank_s": 0.002106491,
+      "barriers_s": 0.005772633,
+      "wall_s": 0.007991300999999999,
+      "total_s": 0.007991300999999999,
+      "nonce_per_s": 125.1360698339357,
+      "phase_wall_s": 0.007991300999999999,
+      "reference_wall_s": {
+        "bank": 0.002504323,
+        "barriers": 0.005644085,
+        "total": 0.008284466000000001,
+        "label": "correctness_reference",
+        "provenance": "cpu_exactgemm_oracle"
+      },
+      "peak_rss_kib": 5172
+    }
+  ],
+  "coupled": {
+    "shape": "v3-ci",
+    "streamed_peak_bytes_est": 77952,
+    "resident_peak_bytes_est": 336000,
+    "mem_cap_bytes": 0,
+    "auto_streamed": false,
+    "stream_vs_resident_wall_ratio": 1.848559452334482,
+    "modes": [
+      {
+        "mode": "SequentialLobes",
+        "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+        "mine_matches_cpu": true,
+        "bank_s": 0.002329787,
+        "barriers_s": 0.005604646,
+        "wall_s": 0.008046800999999999,
+        "total_s": 0.008046800999999999,
+        "nonce_per_s": 124.2729874890655,
+        "phase_wall_s": 0.008046800999999999,
+        "reference_wall_s": {
+          "bank": 0.002282898,
+          "barriers": 0.005572966,
+          "total": 0.007970532000000001,
+          "label": "correctness_reference",
+          "provenance": "cpu_exactgemm_oracle"
+        },
+        "peak_rss_kib": 5172
+      },
+      {
+        "mode": "Checkpointed",
+        "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+        "mine_matches_cpu": true,
+        "bank_s": 0.002013983,
+        "barriers_s": 0.013463759,
+        "wall_s": 0.01558978,
+        "total_s": 0.01558978,
+        "nonce_per_s": 64.14458703073424,
+        "phase_wall_s": 0.01558978,
+        "reference_wall_s": {
+          "bank": 0.002030483,
+          "barriers": 0.01343429,
+          "total": 0.015575501,
+          "label": "correctness_reference",
+          "provenance": "cpu_exactgemm_oracle"
+        },
+        "peak_rss_kib": 5172
+      },
+      {
+        "mode": "Streamed",
+        "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+        "mine_matches_cpu": true,
+        "bank_s": 0.006294723,
+        "barriers_s": 0.008303085,
+        "wall_s": 0.014772395,
+        "total_s": 0.014772395,
+        "nonce_per_s": 67.69383028276728,
+        "phase_wall_s": 0.014772395,
+        "reference_wall_s": {
+          "bank": 0.001925344,
+          "barriers": 0.007619958,
+          "total": 0.00965628,
+          "label": "correctness_reference",
+          "provenance": "cpu_exactgemm_oracle"
+        },
+        "peak_rss_kib": 5172
+      },
+      {
+        "mode": "Resident",
+        "digest": "744fd3dfda6a58ddcd95474a9895cd2c6b17c2f1c2591848fc631eed78dea6a9",
+        "mine_matches_cpu": true,
+        "bank_s": 0.002106491,
+        "barriers_s": 0.005772633,
+        "wall_s": 0.007991300999999999,
+        "total_s": 0.007991300999999999,
+        "nonce_per_s": 125.1360698339357,
+        "phase_wall_s": 0.007991300999999999,
+        "reference_wall_s": {
+          "bank": 0.002504323,
+          "barriers": 0.005644085,
+          "total": 0.008284466000000001,
+          "label": "correctness_reference",
+          "provenance": "cpu_exactgemm_oracle"
+        },
+        "peak_rss_kib": 5172
+      }
+    ],
+    "digests_match": true,
+    "modes_available": "Sequential,Checkpointed,Streamed,Resident",
+    "streamed_over_resident": 1.848559452334482,
+    "interconnect_sim": {
+      "simulated": true,
+      "stage_i_gate4_evidence": false,
+      "label": "SIMULATED / NOT EVIDENCE for Stage-I gate 4 (≥7× same chips)",
+      "fabric_us_per_barrier": 5,
+      "pcie_us_per_barrier": 80,
+      "barriers": 4,
+      "fabric_exchange_us": 20,
+      "pcie_exchange_us": 320,
+      "exchange_slowdown_factor": 16,
+      "stage_i_gate4_threshold": 7,
+      "stage_i_gate4_pass": false
+    }
+  },
+  "extractmx_self_qual": {
+    "status": "pass",
+    "episodes": 3,
+    "digests_stable": true,
+    "mine_matches_cpu": true
+  },
+  "phase_wall_s": {
+    "bank": 0.002329787,
+    "barriers": 0.005604646,
+    "total": 0.008046800999999999,
+    "provenance": "chrono_steady_clock_mine_coupled_puzzle",
+    "evidence_kind": "v3_ci_chrono_measured"
+  },
+  "reference_wall_s": {
+    "bank": 0.002282898,
+    "barriers": 0.005572966,
+    "total": 0.007970532000000001,
+    "label": "correctness_reference",
+    "provenance": "cpu_exactgemm_oracle"
+  },
+  "peak_rss_kib": 5172,
+  "rss_kib": {
+    "before_kib": 4128,
+    "after_kib": 5172,
+    "peak_kib": 5172
+  },
+  "run_variance": {
+    "episode_cv": 0,
+    "n_runs": 1,
+    "note": "Cross-process variance filled by rc-stage-g-campaign.py"
+  },
+  "residency_sweep": [
+    {
+      "working_set_bytes": 8192,
+      "wall_s": 0.008046800999999999,
+      "dims": "v3-ci"
+    }
+  ],
+  "k_curve": {
+    "mode": "toy_synthetic_structure",
+    "digests_match": true,
+    "note": "Coupled campaign placeholder k_curve for rc-gate schema"
+  },
+  "allocation_cap_verdicts": {
+    "512MiB": "skip",
+    "2GiB": "skip",
+    "8GiB": "skip"
+  },
+  "verifier_floor": {
+    "measured": false,
+    "binding": true,
+    "evidence_kind": "unmeasured"
+  },
+  "device_probe": {
+    "backend_resolved": false,
+    "device_gemm_returned": false,
+    "matched_cpu_exactgemm": false,
+    "provider": "cpu",
+    "detail": "no_device_backend_after_rc_selfqual"
+  },
+  "interconnect_sim": {
+    "simulated": true,
+    "stage_i_gate4_evidence": false,
+    "label": "SIMULATED / NOT EVIDENCE for Stage-I gate 4 (≥7× same chips)",
+    "fabric_us_per_barrier": 5,
+    "pcie_us_per_barrier": 80,
+    "barriers": 4,
+    "fabric_exchange_us": 20,
+    "pcie_exchange_us": 320,
+    "exchange_slowdown_factor": 16,
+    "stage_i_gate4_threshold": 7,
+    "stage_i_gate4_pass": false
+  },
+  "gpu_campaign_present": false,
+  "nvlink_campaign_present": false,
+  "gpu_status": "SILICON-GATED",
+  "consensus_note": "nMatMulRCCoupledHeight remains INT32_MAX on public nets; coupled profile (ENC_RC_COUPLED) is INERT unless regtest sets a finite height. Mining inject uses MakeResolvedExactGemmBackendForRC when active. SIMULATED interconnect is NOT Stage-I gate 4 evidence. phase_wall_s times MineCoupledPuzzle; reference_wall_s is correctness_reference (CPU ExactGemm oracle) — not GPU throughput. This harness never raises height."
+}

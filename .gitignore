@@ -27,4 +27,24 @@ sync-pc.sh
 
 # local benchmark output (reproduce with scripts/vast-bench.sh)
 bench-results/
-gpu_names_cache.json
+# root-anchored: the checked-in data/gpu_names_cache.json is a source table, not this cache
+/gpu_names_cache.json
+
+# ---- build artifacts (clean-stack) ----
+dist/
+build/
+build-*/
+*.o
+*.a
+*.metallib
+*-linux-x86_64
+*-macos-arm64
+clean-stack/dist-rel*/
+clean-stack/vast-results/*.log
+clean-stack/bench/vast/refbins/
+
+# python cache (probes / tooling)
+__pycache__/
+*.pyc
+
+*.DS_Store
