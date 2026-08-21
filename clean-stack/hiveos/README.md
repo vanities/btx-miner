@@ -10,7 +10,7 @@ Create a flight sheet with miner **Custom**, then click **Setup Miner Config** a
 | Field | Value |
 |---|---|
 | Miner name | `matador-miner` |
-| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.9.26/matador-miner-0.9.26.tar.gz` |
+| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.9.27/matador-miner-0.9.27.tar.gz` |
 | Hash algorithm | `btx` |
 | Wallet and worker template | `%WAL%.%WORKER_NAME%` |
 | Pool URL | `stratum+tcp://btx-us-east.lproute.com:8660` |
