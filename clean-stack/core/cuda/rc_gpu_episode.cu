@@ -2096,6 +2096,17 @@ static __global__ void k_mant_write_dequant(const u8* __restrict__ sb, u32 nblk,
         // pack each aligned quad into one u32 store, scalar again for the tail. The nibble
         // emission order (low then high, bytes ascending) is untouched.
         u32 acc = 0, accn = 0;
+        // MEASURED FLAT/DEAD (2026-08-21, order-balanced A/B/B/A): caching the scale byte per
+        // 32-position group (the index collapses to p>>5 on pow2 cols, and a thread's ~44-byte
+        // run touches at most 3 groups, so ~44 scales[] loads shrink to ~3) = 0.00% / -0.65%
+        // on the two clean quads, digest unchanged (third quad thrown out: a foreign GPU
+        // tenant woke mid-A/B -- clocks UP, throughput DOWN, the exact signature gpu_health
+        // now reports). Unlike the extract-kernel load hoist (+0.61%), the redundant loads
+        // here were already free: a warp's runs are ADJACENT in the output, so its ~1400
+        // scale lookups span one or two 128 B lines -- warp-coalesced L1 hits with L1TEX at
+        // only ~45% -- and the sg!=sg_prev branch costs what the load saved. FIRST measured
+        // axis on this kernel; its limiter is the packed OUT stores + hcache reads (87% L2),
+        // not the scales[] side.
         #pragma unroll
         for (int i = 0; i < 32; ++i) {
             const u8 by = sha_word_byte(s, i);
