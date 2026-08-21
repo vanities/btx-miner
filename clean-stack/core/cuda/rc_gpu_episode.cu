@@ -910,6 +910,21 @@ static __global__ void k_extract_tiles(const u8* __restrict__ prf,   // 32 bytes
 
     i8 mu[kBlockLen];
     u32 filled = 0, remix = 0;
+    // Rejection-loop load hoist (2026-08-21). m11_accept takes 11 of 16 nibbles
+    // (kM11AccMask=0xF4F5 = 68.75%), so `filled` STALLS on ~31% of inner iterations -- and the
+    // address raw[base+filled] is invariant while it stalls. The straight-line version re-issues
+    // that load (and resid's) on every retry: ~1.45 loads per accepted value, ~45% of them
+    // redundant. ncu puts this kernel at 86% L2 with L1 at only 42%, i.e. limited by REQUEST /
+    // sector count, which is exactly what the redundant re-issues inflate. So load once per
+    // `filled` and refresh only when it advances.
+    // Byte-exact by construction: identical values consumed in identical order; only the number
+    // of times the same address is fetched changes.
+    // MEASURED (2026-08-21, order-balanced A/B/B/A x3 at plateau): +0.61% episode throughput
+    // (1.4418 -> 1.4507 ep/s), and the hoisted arm did it at a LOWER mean clock (2271 vs
+    // 2277 MHz), so ~+0.9% clock-normalised. Consistent per quad (+0.55/+0.66/+0.63%), digest
+    // 42e74cd6 unchanged, 0 bytes spill either way. Small, but it is the only lever on this
+    // kernel that has gone the right way: the axes ledger below is otherwise all kills.
+    i32 cur_raw = HAS_RESID ? (raw[base] + i32(resid[base])) : raw[base];
     while (filled < kBlockLen) {
         // Keystream in 16 REGISTER words (not a local ks[64] byte array): kills the dominant
         // L1<->L2 spill traffic (ncu: kernel L2-bound at 84% with ~10x necessary traffic).
@@ -926,11 +941,14 @@ static __global__ void k_extract_tiles(const u8* __restrict__ prf,   // 32 bytes
                 const u8 nib = u8((v >> (4*k)) & 0x0F);
                 // The residual add rides on a load the kernel already performs; the extra int8
                 // fetch hits the same L1 line pattern that gives this kernel its 91.5% hit rate.
-                const i32 raw_i = HAS_RESID ? (raw[base + filled] + i32(resid[base + filled]))
-                                            : raw[base + filled];
-                const u32 raw_u = u32(raw_i);                // == dmix_from_i64 in int32 range
+                const u32 raw_u = u32(cur_raw);              // == dmix_from_i64 in int32 range
                 const u8 mixed = u8((nib ^ u8((raw_u * 0x9E3779B9u) >> 28)) & 0x0F);
-                if (m11_accept(mixed)) mu[filled++] = m11_value(mixed);
+                if (m11_accept(mixed)) {
+                    mu[filled++] = m11_value(mixed);
+                    if (filled < kBlockLen)
+                        cur_raw = HAS_RESID ? (raw[base + filled] + i32(resid[base + filled]))
+                                            : raw[base + filled];
+                }
             }
         }
         ++remix;
