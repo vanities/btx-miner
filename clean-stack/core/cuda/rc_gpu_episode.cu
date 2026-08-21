@@ -2367,9 +2367,21 @@ static void stream_penalty_bench(const H256& sigma, u32 lobe_width, u32 page_use
 // waits on the slot's `ready` event; the producer waits on `consumed` before overwriting. Events
 // bind correctly because enqueue order is interleaved host-side: produce(l+N) is enqueued only
 // AFTER the layer-l consumer waits are (so a slot's `ready` re-record can never precede the wait
-// that needs the older record). Gates: BTX_RC_OVERLAP (default ON; =0 reverts to the sequential
-// schedule in one binary), BTX_RC_OVERLAP_RING (slots, default 3 = +~400 MB at P1 dims).
+// that needs the older record). Gates: BTX_RC_OVERLAP (default **OFF** -- see OverlapLevel(),
+// which returns 0 unless the env var is set; this comment said "default ON" until 2026-08-21,
+// which was wrong from the moment the autopsy below flipped it), BTX_RC_OVERLAP_RING (slots,
+// default 3 = +~400 MB at P1 dims).
 // RC_PROFILE forces the sequential path so the per-stage timers keep their meaning.
+//
+// DEADLOCK WARNING (2026-08-21): BTX_RC_OVERLAP=1 combined with MORE THAN ONE EPISODE IN
+// FLIGHT hangs hard -- observed sitting 2h40m at 100% util / 100 W before it was killed. The
+// ring's slot state is `static thread_local` (g_dev_og / g_sog below) while the ready/consumed/
+// staged handshake assumes a single consumer walking the layer chain in order, so two concurrent
+// episodes cross-couple the events and neither can make progress. Shipped rigs are unaffected
+// because the default is OFF and the miner runs one episode at a time; it bites anyone pairing
+// this ring with the bench's `conc` argument. Fix the thread_local sharing before re-enabling
+// on wider silicon. (Concurrency is not the reason to: conc=2 measured -12.9% on a 5090,
+// order-interleaved, because the GEMMs already sit at 90-96% of tensor peak.)
 static thread_local Dev g_dev_og;                 // side-pool: all g_sog scratch, no lifetime races
 static thread_local cudaStream_t g_sog = nullptr; // non-blocking opgen stream
 // hctx/dctx: PINNED staging + device landing for the two 96 B opgen ctx blocks. The producer
