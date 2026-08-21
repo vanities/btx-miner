@@ -482,6 +482,14 @@ struct Stats {
     // rate_window_sec = 0 means no interval has elapsed yet, so the rate is not yet real.
     std::atomic<double> rate_episode_per_s{0.0};
     std::atomic<double> rate_window_sec{0.0};
+    // High-water mark of rate_episode_per_s (full windows only) = this rig's own
+    // demonstrated capability under its own OC/power/thermal setup. Deliberately
+    // never decays: a degrading card must NOT drag its own baseline down with it.
+    // Written by the same heartbeats that publish rate; consumed by the watchdog's
+    // degradation rule and served in /summary so a fleet hub can compute
+    // rate/peak without history of its own. One episode is deterministic GPU work,
+    // so unlike share rates this peak is not luck-inflated.
+    std::atomic<double> rate_peak_episode_per_s{0.0};
 };
 
 static void WatchdogSetStatus(Stats& stats,

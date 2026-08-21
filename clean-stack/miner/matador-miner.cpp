@@ -1687,6 +1687,13 @@ int main(int argc, char* argv[])
                 // publish to shared state so the status API's /summary can serve the same averages
                 stats.rate_episode_per_s.store(dt > 0 ? d_eps / dt : 0.0, std::memory_order_relaxed);
                 stats.rate_window_sec.store(dt, std::memory_order_relaxed);
+                // Peak = the rig's own demonstrated capability. Full windows only (>=20s):
+                // the first partial tick after a reconnect measures a sliver, not a rate.
+                if (dt >= 20.0 && d_eps > 0) {
+                    const double r = d_eps / dt;
+                    double pk = stats.rate_peak_episode_per_s.load(std::memory_order_relaxed);
+                    if (r > pk) stats.rate_peak_episode_per_s.store(r, std::memory_order_relaxed);
+                }
                 stats.avg_5m.episode_per_s.store(avg5m.eps, std::memory_order_relaxed);
                 stats.avg_5m.pool_episode_per_s.store(avg5m.pool, std::memory_order_relaxed);
                 stats.avg_5m.acc_per_hr.store(avg5m.sh_hr, std::memory_order_relaxed);
@@ -1747,10 +1754,16 @@ int main(int argc, char* argv[])
                      << " norm/s=" << FmtRate(avg1h.norm)
                      << " pool-ep/s=" << FmtRate(avg1h.pool)
                      << " acc/hr=" << std::fixed << std::setprecision(0) << avg1h.sh_hr
+                     // credit = pool-credited / produced episodes, same window. ~0.99 healthy
+                     // (the ~1% dev window credits elsewhere); sustained low over 24h with a
+                     // real share count = the pool is not paying for the work. 1h swings on
+                     // Poisson share luck -- read 24h first.
+                     << " credit=" << std::setprecision(2) << (avg1h.eps > 0 ? avg1h.pool / avg1h.eps : 0.0)
                      << " | 24h: ep/s=" << FmtRate(avg24h.eps)
                      << " norm/s=" << FmtRate(avg24h.norm)
                      << " pool-ep/s=" << FmtRate(avg24h.pool)
-                     << " acc/hr=" << std::setprecision(0) << avg24h.sh_hr);
+                     << " acc/hr=" << std::setprecision(0) << avg24h.sh_hr
+                     << " credit=" << std::setprecision(2) << (avg24h.eps > 0 ? avg24h.pool / avg24h.eps : 0.0));
                 // Off-path GPU telemetry (NVML, no fork). nonce/W = efficiency at the
                 // 600W cap -- the nonces-per-joule lever. Skipped if NVML is unavailable.
                 // Queried even for quiet children: it feeds the [stats-all] pow/maxtemp.
@@ -1890,6 +1903,11 @@ int main(int argc, char* argv[])
             // /summary consumer -- HiveOS included -- read a working rig as doing nothing.
             stats.rate_episode_per_s.store(dt > 0 ? d_eps / dt : 0.0, std::memory_order_relaxed);
             stats.rate_window_sec.store(dt, std::memory_order_relaxed);
+            if (dt >= 20.0 && d_eps > 0) {   // full windows only, as on the pool path
+                const double r = d_eps / dt;
+                double pk = stats.rate_peak_episode_per_s.load(std::memory_order_relaxed);
+                if (r > pk) stats.rate_peak_episode_per_s.store(r, std::memory_order_relaxed);
+            }
             const bool child_quiet = mgpu::IsChild() && !mgpu::ChildConsoleStatsEnabled();
             if (!child_quiet)
             LOGI("[stats] uptime=" << FmtDuration(static_cast<uint64_t>(up_s))

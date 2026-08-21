@@ -255,6 +255,23 @@ scripts/matador-status.sh                # readable terminal dashboard over the 
 (running vs latest version). For multi-GPU rigs each child increments the port: `4060`,
 `4061`, ...
 
+Fields worth alerting on:
+
+- **`rate`** - the live episode rate over the last heartbeat (~30s) plus
+  `peak_episode_per_s`, the rig's own demonstrated best (never decays). `rate/peak`
+  sustained well below 1 is a degraded card even though it is "working".
+- **`gpu_health`** - `throttle_reasons` says *why* the card is at its clock
+  (`sw-power-cap` = at its power limit - normal at the cap; `hw-thermal` = cooling
+  problem), and `foreign_procs`/`foreign_mib` report other processes using the GPU. A
+  desktop AI job or stray process silently halves your rate while every miner-side
+  number still looks alive.
+- **`averages.{1h,24h}.pool_credit_ratio`** - episodes the pool *credited* (accepted
+  shares x expected episodes per share) over episodes you *produced*. Healthy is ~0.99
+  (the ~1% dev-fee window credits on its own session). Persistently below ~0.9 over 24h
+  with a real share count means your work is not being paid for - stale-heavy link,
+  mis-set difficulty, or a short-paying pool. The 1h figure swings on share luck; trust
+  24h.
+
 > **Scrapers built against v0.9.9 or earlier need updating.** The v3 throughput fields
 > (`nonce_per_s`, `digest_c_per_s`, `scan_per_s`, the `batched_*` counters and the
 > `validation` object) described a solver that no longer exists and have been replaced by
@@ -267,6 +284,19 @@ Pool mode supports ordered `pools[]` failover, a reject-streak watchdog that tri
 reconnect, optional pool-fallback for solo workers, and a warning-only thermal monitor (it never
 changes clocks, fans, or power limits). A 1% time-based dev fee funds development - the coinbase
 pays the dev address for ~36s of each hour, logged on entry and exit.
+
+The watchdog also distinguishes **dead** from **degraded**:
+
+- **Dead** (wedged CUDA context, fallen-off-the-bus card): no episode progress for 300s while
+  connected and gate-open exits the process non-zero so systemd restarts it with a fresh GPU
+  context - the same fix an operator would apply by hand.
+- **Degraded** (throttling, a foreign process on the GPU, a sick card): episodes keep advancing,
+  so nothing else fires - but the live rate sits below 70% of the rig's own demonstrated peak
+  for 180s. This logs a warning that includes the *why* (NVML throttle reasons and any foreign
+  GPU processes) and sets `watchdog.status` to `warning` in `/summary`. Observe-only: a
+  degraded card is alive, so no restart can fix it. Tune or disable with
+  `MATADOR_WATCHDOG_DEGRADED_PCT` (default 70, `0` disables) and
+  `MATADOR_WATCHDOG_DEGRADED_S` (default 180).
 
 ## Trust & self-custody
 

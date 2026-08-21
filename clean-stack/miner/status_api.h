@@ -464,6 +464,19 @@ static std::string BuildSummaryJson(const Config& cfg,
     auto jnumg = [](double x) -> std::string {
         std::ostringstream s; s << std::setprecision(9) << x; return s.str();
     };
+    // Pool credit ratio: episodes the POOL credited (accepted shares x expected episodes per
+    // share) over episodes this rig PRODUCED, same window. ~1.0 = the pool pays for the work;
+    // persistently below ~0.9 over 24h WITH a real share count (see acc_per_hr) = work is not
+    // being credited -- stale-heavy connection, mis-set difficulty, or a short-paying pool.
+    // Share luck is Poisson, so the 1h figure swings with few shares; trust 24h first. The
+    // ~1% dev-fee window mines on a separate session, so a fraction of produced episodes is
+    // credited there, not here: ~0.99 is the honest healthy baseline, not exactly 1.0.
+    // Solo mode has no pool credit: the ratio serves 0 there, meaning "not applicable".
+    auto credit_ratio = [](const Stats::WindowAvg& w) -> double {
+        const double eps = w.episode_per_s.load(std::memory_order_relaxed);
+        const double pool = w.pool_episode_per_s.load(std::memory_order_relaxed);
+        return eps > 0.0 ? pool / eps : 0.0;
+    };
     std::ostringstream o;
     o << "{"
       << "\"status\":\"ok\""
@@ -503,6 +516,10 @@ static std::string BuildSummaryJson(const Config& cfg,
       << ",\"rate\":{"
       << "\"episode_per_s\":" << jnumg(stats.rate_episode_per_s.load(std::memory_order_relaxed))
       << ",\"window_sec\":" << jnum(stats.rate_window_sec.load(std::memory_order_relaxed))
+      // High-water mark of the live rate (full windows only) -- the rig's own demonstrated
+      // capability, never decayed. rate/peak << 1 sustained = degraded (throttle, foreign
+      // tenant, sick card); the watchdog's degradation rule uses exactly this comparison.
+      << ",\"peak_episode_per_s\":" << jnumg(stats.rate_peak_episode_per_s.load(std::memory_order_relaxed))
       << "}"
       << ",\"averages\":{"
       << "\"5m\":{"
@@ -513,10 +530,12 @@ static std::string BuildSummaryJson(const Config& cfg,
       << "\"episode_per_s\":" << jnumg(stats.avg_1h.episode_per_s.load(std::memory_order_relaxed))
       << ",\"pool_episode_per_s\":" << jnumg(stats.avg_1h.pool_episode_per_s.load(std::memory_order_relaxed))
       << ",\"acc_per_hr\":" << jnum(stats.avg_1h.acc_per_hr.load(std::memory_order_relaxed))
+      << ",\"pool_credit_ratio\":" << jnumg(credit_ratio(stats.avg_1h))
       << "},\"24h\":{"
       << "\"episode_per_s\":" << jnumg(stats.avg_24h.episode_per_s.load(std::memory_order_relaxed))
       << ",\"pool_episode_per_s\":" << jnumg(stats.avg_24h.pool_episode_per_s.load(std::memory_order_relaxed))
       << ",\"acc_per_hr\":" << jnum(stats.avg_24h.acc_per_hr.load(std::memory_order_relaxed))
+      << ",\"pool_credit_ratio\":" << jnumg(credit_ratio(stats.avg_24h))
       << "}}"
       // The v3 "validation" object (freivalds/phase2/transcript check counters) is
       // gone with the verify paths that fed it. ENC_RC needs no separate validation
@@ -703,10 +722,32 @@ static std::thread StartPoolWatchdog(const Config& cfg,
             else LOGW("[watchdog] ignoring bad MATADOR_WATCHDOG_ZERO_NONCE_S=\"" << v
                       << "\" (keeping " << zero_nonce_s << "s)");
         }
+        // Degradation thresholds: warn when the live rate sits below degraded_pct% of this
+        // rig's own peak for degraded_s. The zero-nonce rule above catches DEAD; this
+        // catches ALIVE-BUT-SLOW -- throttling, a foreign GPU tenant, a sick card -- which
+        // passes every other check because episodes keep advancing. Observe-only by design:
+        // a degraded card is alive, so no restart can fix it; the value is a loud WHY
+        // (throttle state + tenant list) instead of an ep/s number quietly sagging.
+        int degraded_pct = 70;   // 0 disables
+        int degraded_s = 180;    // must exceed several ~30s heartbeat windows: one bad window is a job switch, not degradation
+        if (const char* v = std::getenv("MATADOR_WATCHDOG_DEGRADED_PCT")) {
+            int parsed = 0;
+            if (SafeParseInt(v, parsed) && parsed >= 0 && parsed < 100) degraded_pct = parsed;
+            else LOGW("[watchdog] ignoring bad MATADOR_WATCHDOG_DEGRADED_PCT=\"" << v
+                      << "\" (keeping " << degraded_pct << ")");
+        }
+        if (const char* v = std::getenv("MATADOR_WATCHDOG_DEGRADED_S")) {
+            int parsed = 0;
+            if (SafeParseInt(v, parsed) && parsed > 0) degraded_s = parsed;
+            else LOGW("[watchdog] ignoring bad MATADOR_WATCHDOG_DEGRADED_S=\"" << v
+                      << "\" (keeping " << degraded_s << "s)");
+        }
         LOGI("[watchdog] enabled check_s=" << cfg.watchdog_check_s
              << " reject_streak=" << cfg.watchdog_reject_streak
              << " no_share_s=" << cfg.watchdog_no_share_s
              << " zero_nonce_s=" << zero_nonce_s
+             << " degraded_pct=" << degraded_pct
+             << " degraded_s=" << degraded_s
              << " thermal=" << (cfg.thermal_enabled ? "on" : "off")
              << " temp_warn_c=" << cfg.thermal_warn_temp_c
              << " temp_critical_c=" << cfg.thermal_critical_temp_c
@@ -727,6 +768,12 @@ static std::thread StartPoolWatchdog(const Config& cfg,
         uint64_t zn_last_live = 0;
         int64_t zn_progress_ms = MonoMs();
         int64_t last_thermal_log_ms = 0;
+        // Degradation-rule state: when the rate first fell below the floor (0 = not below),
+        // last WARN emission (rate-limited to 1/min), and whether we are currently degraded
+        // (so recovery gets one explicit log line instead of silently going quiet).
+        int64_t dg_below_ms = 0;
+        int64_t dg_last_log_ms = 0;
+        bool dg_active = false;
         while (!stop_all.load()) {
             const int check_s = std::max(1, cfg.watchdog_check_s);
             for (int i = 0; i < check_s * 2 && !stop_all.load(); ++i) {
@@ -818,6 +865,62 @@ static std::thread StartPoolWatchdog(const Config& cfg,
                     // LOGE above is already flushed (Emit ends every line in
                     // std::endl) and the fd-level --log-file tee has the bytes too.
                     std::_Exit(70);   // EX_SOFTWARE; non-zero so systemd Restart= kicks in
+                }
+            }
+
+            // Degradation rule: ALIVE but sustained well below this rig's own peak. The
+            // failure modes this exists for -- throttling, a foreign tenant on the GPU, a
+            // sick/renegotiated card -- keep episodes advancing, so zero-nonce never fires
+            // and shares still trickle in; the only symptom is a rate quietly parked at a
+            // fraction of what THIS rig has demonstrated. Compares against the rig's own
+            // high-water mark (rate_peak_episode_per_s, published by the heartbeat), so no
+            // absolute expectations are baked in and every card/OC combination calibrates
+            // itself. Observe-only: unlike a wedged CUDA context, nothing a restart fixes.
+            if (degraded_pct > 0) {
+                const double rate = stats.rate_episode_per_s.load(std::memory_order_relaxed);
+                const double win = stats.rate_window_sec.load(std::memory_order_relaxed);
+                const double peak = stats.rate_peak_episode_per_s.load(std::memory_order_relaxed);
+                const int64_t last_notify = stats.last_notify_ms.load();
+                const bool connected = last_notify > 0 && (now_ms - last_notify) <= 120000;
+                const double floor_eps = peak * degraded_pct / 100.0;
+                if (!connected || !GateAllowsMining() || peak <= 0.0 || win < 20.0) {
+                    // Paused, disconnected, or no baseline yet: a low rate is expected,
+                    // hold the clock so the full threshold must elapse after resuming.
+                    dg_below_ms = 0;
+                } else if (rate >= floor_eps) {
+                    if (dg_active) {
+                        LOGI("[watchdog] rate recovered: " << std::fixed << std::setprecision(3)
+                             << rate << " ep/s >= " << floor_eps << " (peak " << peak << ")");
+                        dg_active = false;
+                    }
+                    dg_below_ms = 0;
+                } else {
+                    if (dg_below_ms == 0) dg_below_ms = now_ms;
+                    if (now_ms - dg_below_ms >= static_cast<int64_t>(degraded_s) * 1000) {
+                        dg_active = true;
+                        // The WHY, from the same fork-free NVML path as /summary: is the
+                        // card throttling, and is anything else on it.
+                        const GpuTelemetry gt = QueryGpuTelemetry();
+                        std::ostringstream msg;
+                        msg << std::fixed << std::setprecision(3)
+                            << "degraded_rate ep/s=" << rate << " peak=" << peak
+                            << " floor=" << floor_eps << " (" << degraded_pct << "%)"
+                            << " sustained_s=" << ((now_ms - dg_below_ms) / 1000)
+                            << " throttle=" << (gt.ok && gt.has_throttle
+                                                    ? ThrottleReasonsStr(gt.throttle) : "unknown")
+                            << " foreign_procs=" << (gt.ok && gt.has_procs
+                                                         ? std::to_string(gt.foreign_procs) : "unknown")
+                            << (gt.ok && gt.has_procs && gt.foreign_procs > 0
+                                    ? " foreign_mib=" + std::to_string(gt.foreign_mib) : "");
+                        WatchdogSetStatus(stats, "warning", msg.str(), "observe-only (degraded, not dead)");
+                        if (now_ms - dg_last_log_ms >= 60000) {
+                            dg_last_log_ms = now_ms;
+                            LOGW("[watchdog] " << msg.str()
+                                 << "; rig is mining well below its own demonstrated rate --"
+                                    " check throttle/tenants above, clocks, and cooling");
+                        }
+                        continue;   // hold the warning status; skip the ok reset below
+                    }
                 }
             }
 
