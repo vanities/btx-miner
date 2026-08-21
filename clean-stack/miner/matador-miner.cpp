@@ -1475,6 +1475,17 @@ int main(int argc, char* argv[])
     const std::string active_backend_name = matmul::backend::ToString(active_backend_kind);
     LOGI("[solver] backend=" << active_backend_name << " path=enc-rc");
 
+    // Startup tenancy check. A second process on this GPU (a desktop AI job, another miner,
+    // a stray bench) steals SM time and VRAM, and EVERY symptom of it -- low ep/s, sagging
+    // clocks -- points at the miner instead. Say it once, loudly, at the point where the
+    // operator is still reading the log, rather than leaving it to be inferred later.
+    if (const GpuTelemetry gt0 = QueryGpuTelemetry(); gt0.ok && gt0.has_procs && gt0.foreign_procs > 0) {
+        LOGW("[gpu] " << gt0.foreign_procs << " OTHER process(es) are using this GPU ("
+             << gt0.foreign_mib << " MiB held). They compete with mining for SM time and VRAM,"
+             << " so ep/s here is NOT this card's capability -- compare rates only against a"
+             << " quiet GPU, and expect out-of-memory on large multi-GPU configs.");
+    }
+
     // Activation heights + address format (bech32 hrp) come from chainparams for
     // the selected chain. Mainnet: v2 @125000, v3 seed @130500, fwd @132000;
     // regtest: all gated heights default to INT32_MAX unless overridden via btxd's
@@ -1749,7 +1760,15 @@ int main(int argc, char* argv[])
                     LOGI("[gpu] temp=" << gt.temp_c << "C clk=" << gt.sm_mhz
                          << " mem=" << gt.mem_mhz << " pow=" << gt.pow_w << "W"
                          << " fan=" << gt.fan_pct << "% util=" << gt.util_pct << "%"
-                         << " ep/kWs=" << (epw * 1000.0));
+                         << " ep/kWs=" << (epw * 1000.0)
+                         // WHY this clock, and WHO else is on the card. Without these two, a
+                         // degraded rig looks identical to a healthy one and the operator is
+                         // left guessing between heat, power and a foreign tenant.
+                         << (gt.has_throttle ? " throttle=" + ThrottleReasonsStr(gt.throttle) : "")
+                         << (gt.has_procs && gt.foreign_procs > 0
+                                 ? " OTHER-GPU-PROCS=" + std::to_string(gt.foreign_procs)
+                                       + "(" + std::to_string(gt.foreign_mib) + "MiB)"
+                                 : ""));
                 }
                 // Multi-GPU child: publish this heartbeat for the supervisor's
                 // [stats-all]/[stats-all-avg] roll-ups.

@@ -876,6 +876,14 @@ static __global__ void k_extract_tiles(const u8* __restrict__ prf,   // 32 bytes
                                 u32 rows, u32 cols,
                                 const i8* __restrict__ resid) // rows*cols, or null
 {
+    // MEASURED DEAD (2026-08-21, locked, interleaved x3): __launch_bounds__(256, 4). ncu shows
+    // this kernel at ~50% SM / ~35% DRAM and Block Limit Registers = 3 (79 regs), which reads
+    // like a latency-bound kernel begging for occupancy. It is not. Capping to 64 regs buys the
+    // 4th block (24 -> 32 warps/SM) at a 16 B spill store / 8 B spill load, and measured -5.0%
+    // (1.470 -> 1.396 ep/s), digest unchanged. Occupancy does not help because the limiter is L2
+    // SECTOR TRAFFIC, not warp latency: extra warps add L2 pressure rather than hiding it, and
+    // the spill routes more traffic through the same L1/L2. SEVENTH dead restructure -- check
+    // lts__ throughput before believing an SM%/DRAM% pair that looks latency-bound.
     // MEASURED DEAD (2026-08-02, locked, x2): warp-cooperative smem staging of the raw span
     // (coalesced 4 KiB/warp, transposed, conflict-free reads) = +8% SLOWER despite directly
     // targeting the ncu-measured L2-sector limiter. The 32 KiB/block smem carveout shrinks the

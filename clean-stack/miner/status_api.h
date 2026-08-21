@@ -313,6 +313,27 @@ static std::string GpuRuntimeJson(const std::vector<GpuRuntimeMetric>& metrics)
     return arr.str();
 }
 
+// Throttle reasons + foreign GPU tenants, straight off NVML (fork-free). Both answer
+// questions /summary previously could not: "why is this card slow" and "is something
+// else on it". A slow rig with throttle=["sw-power-cap"] is at its power limit, not
+// broken; one with foreign_procs>0 is sharing the GPU and its ep/s is not comparable.
+static std::string GpuHealthJson()
+{
+    const GpuTelemetry t = QueryGpuTelemetry();
+    std::ostringstream o;
+    o << "{\"throttle_reasons\":";
+    if (t.ok && t.has_throttle) o << JsonString(ThrottleReasonsStr(t.throttle));
+    else                        o << "null";
+    o << ",\"throttle_bits\":";
+    if (t.ok && t.has_throttle) o << t.throttle; else o << "null";
+    o << ",\"foreign_procs\":";
+    if (t.ok && t.has_procs) o << t.foreign_procs; else o << "null";
+    o << ",\"foreign_mib\":";
+    if (t.ok && t.has_procs) o << t.foreign_mib; else o << "null";
+    o << "}";
+    return o.str();
+}
+
 #ifndef MATADOR_STATUS_API_GPU_JSON_ONLY
 
 static std::string ThermalStatusJson(const Config& cfg, const std::vector<GpuRuntimeMetric>& metrics)
@@ -527,6 +548,12 @@ static std::string BuildSummaryJson(const Config& cfg,
       << "}"
       << ",\"thermal\":" << ThermalStatusJson(cfg, gpu_metrics)
       << ",\"gpu_runtime\":" << GpuRuntimeJson(gpu_metrics)
+      // Why the card is at the clock it is, and who else is on it. Deliberately a
+      // top-level object rather than extra gpu_runtime fields: that row has an
+      // nvidia-smi CSV fallback which cannot supply either value, and its JSON shape
+      // is pinned by harness/status_api_gpu_json_test.cpp. One process serves one GPU,
+      // so this describes THIS process's card. null = NVML could not answer.
+      << ",\"gpu_health\":" << GpuHealthJson()
       << ",\"update\":{"
       << "\"current\":" << JsonString(upd_current)
       << ",\"latest_seen\":" << JsonString(upd_latest)
