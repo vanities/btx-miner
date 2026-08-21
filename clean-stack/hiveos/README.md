@@ -13,7 +13,7 @@ Create a flight sheet with miner **Custom**, then click **Setup Miner Config** a
 | Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.9.27/matador-miner-0.9.27.tar.gz` |
 | Hash algorithm | `btx` |
 | Wallet and worker template | `%WAL%.%WORKER_NAME%` |
-| Pool URL | `stratum+tcp://btx-us-east.lproute.com:8660` |
+| Pool URL | `stratum+tcp://stratum.minebtx.com:3333` |
 | Pass | `x` |
 | Extra config arguments | (optional, plain miner CLI flags) |
 
@@ -24,7 +24,7 @@ sheets, and a table of verified pool URLs, are in [hiveos/](../../hiveos/).
 
 Give the Pool URL its scheme: `ssl://`, `tls://`, `stratum+ssl://` or `stratum+tls://`
 encrypt the stratum socket, and `stratum://`, `stratum+tcp://` or a bare `host:port`
-stay plaintext. ninjaraider's TLS endpoint is `ssl://ninjaraider.com:44921`.
+stay plaintext.
 
 The certificate chain and hostname are verified by default; a pool with a self-signed
 or expired certificate needs `--pool-tls-insecure` in Extra config arguments.
@@ -46,7 +46,7 @@ or expired certificate needs `--pool-tls-insecure` in Extra config arguments.
 - Reports hashrate, per GPU temperature, accepted and rejected shares to the HiveOS
   dashboard. See [Hashrate on the dashboard](#hashrate-on-the-dashboard) for why the
   number is a handful of H/s rather than MH/s.
-- Works with both stratum pools and login style pools (LuckyPool). Solo mining
+- Works with both stratum pools and JSON-RPC login style pools. Solo mining
   through a pool that supports it: use `solo:%WAL%.%WORKER_NAME%` as the template.
 - Multiple pool URLs (space separated) become primary plus fallbacks.
 

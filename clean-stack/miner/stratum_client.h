@@ -152,6 +152,29 @@ static std::string CsvNumberOrNull(const std::string& col)
     return col;
 }
 
+// Does a pool's share-reject reason mean THIS SESSION's authorization is gone?
+// Byron says verbatim "unauthorized: send mining.authorize first" (probed 2026-08-21);
+// other stratum servers phrase the same state as "not authorized" / "login first".
+// It matters because a session in this state is a total loss that looks alive: Byron
+// keeps DISPATCHING mining.notify jobs to unauthorized sessions (also probed), so the
+// miner keeps solving and every share bounces. Before this classifier existed the only
+// exit was the watchdog's 20-reject streak, ~5-10 minutes of burned work per cycle --
+// and a reject-with-this-reason now requests an immediate reconnect instead (which also
+// advances the pool failover index, so a deterministic auth failure rotates pools
+// rather than looping). Substring match on a lowered copy: pool wording is free text.
+static bool ReasonIsAuthFailure(const std::string& reason)
+{
+    std::string r;
+    r.reserve(reason.size());
+    for (char c : reason) r.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    return r.find("unauthorized") != std::string::npos ||
+           r.find("unauthorised") != std::string::npos ||
+           r.find("not authorized") != std::string::npos ||
+           r.find("not authorised") != std::string::npos ||
+           r.find("authorize first") != std::string::npos ||
+           r.find("login first") != std::string::npos;
+}
+
 #ifndef MATADOR_STRATUM_PARSE_HELPERS_ONLY
 
 #include <openssl/err.h>
@@ -353,6 +376,7 @@ public:
     void ConnectAndHandshake()
     {
         Connect();                       // throws on socket failure
+        m_auth_kick.store(false);        // fresh connection, fresh auth-escalation debounce
         m_running.store(true);
         m_last_notify_ms.store(NowMs()); // start the stall clock at connect (handshake grace)
         if (m_stats) m_stats->last_notify_ms.store(MonoMs());
@@ -391,6 +415,30 @@ public:
         if (!worker.empty()) ss << ",\"worker\":\"" << JsonEscapeMinimal(worker) << "\"";
         ss << "}}\n";
         SendLine(ss.str());
+    }
+
+    // The dev-fee side session must NEVER bounce the primary: both clients share one
+    // Stats, and watchdog_reconnect_requested tears down the whole pool loop. The
+    // primary keeps the default (escalate); the dev client opts out at construction.
+    void SetAuthEscalation(bool on) { m_auth_escalate = on; }
+
+    // Escalate an authorization failure -- a rejected authorize/login, or a share
+    // bounced with an auth-shaped reason -- into the reconnect+failover path the solve
+    // loop already honours (disconnect, ADVANCE the pool index, backoff, reconnect).
+    // Debounced per connection: when the pool drops our session, every in-flight
+    // submit usually bounces at once, and one kick is enough.
+    void RequestAuthReconnect(const char* why)
+    {
+        if (m_auth_kick.exchange(true)) return;
+        if (!m_auth_escalate || m_stats == nullptr) {
+            LOGW("[" << m_tag << "] " << why << " -- session not authorized at the pool;"
+                 " side session will retry on its own (primary mining unaffected)");
+            return;
+        }
+        LOGW("[" << m_tag << "] " << why << " -- this session is NOT authorized at the pool,"
+             " so every further share here is a guaranteed reject while jobs keep flowing."
+             " Requesting immediate reconnect/failover.");
+        m_stats->watchdog_reconnect_requested.store(true);
     }
 
     void Disconnect()
@@ -1380,15 +1428,28 @@ private:
             const UniValue& r = v.exists("result") ? v["result"] : kNull;
             const bool ok = !has_error && (r.isNull() ? false : (r.isBool() ? r.get_bool() : true));
             if (ok) LOGI("[stratum] authorized user=" << m_user);
-            else    LOGE("[stratum] authorize REJECTED user=" << m_user
-                         << " reason=\"" << (has_error ? err_msg : "result=false") << "\"");
+            else {
+                LOGE("[stratum] authorize REJECTED user=" << m_user
+                     << " reason=\"" << (has_error ? err_msg : "result=false") << "\"");
+                // Do NOT mine on. This used to be log-only, and the failure mode is
+                // vicious: Byron keeps dispatching jobs to unauthorized sessions
+                // (probed 2026-08-21), so an un-authorized miner grinds at full power
+                // with every share bouncing "unauthorized: send mining.authorize
+                // first". Request the reconnect path instead -- it disconnects and
+                // ADVANCES the pool failover index, so a pool that deterministically
+                // rejects our authorize rotates to the next pool rather than looping.
+                RequestAuthReconnect("authorize rejected");
+            }
             return;
         }
         if (id == 3) {        // login response (JSON-RPC login dialect)
             const UniValue& r = v.exists("result") ? v["result"] : kNull;
             const bool ok = !has_error && r.isBool() && r.get_bool();
             if (ok) LOGI("[" << m_tag << "] login OK user=" << m_user);
-            else    LOGE("[" << m_tag << "] login REJECTED: " << (has_error ? err_msg : "result!=true"));
+            else {
+                LOGE("[" << m_tag << "] login REJECTED: " << (has_error ? err_msg : "result!=true"));
+                RequestAuthReconnect("login rejected");   // same reasoning as authorize above
+            }
             return;
         }
 
@@ -1423,6 +1484,12 @@ private:
                     }
                     LOGW("[share] REJECTED id=" << id << " reason=\"" << err_msg << "\""
                          << " (accepted=" << m_accepted.load() << " rejected=" << m_rejected.load() << ")");
+                    // An auth-shaped reject means the POOL no longer holds this session as
+                    // authorized (their side restarted, or our authorize never took): every
+                    // further submit on this socket is a guaranteed loss while jobs keep
+                    // flowing. Re-handshake NOW instead of burning the watchdog's 20-reject
+                    // streak (~5-10 min of work) to reach the same reconnect.
+                    if (ReasonIsAuthFailure(err_msg)) RequestAuthReconnect("share rejected as unauthorized");
                     // A low-difficulty reject would mean the target we solved against was
                     // EASIER than the one the pool grades by -- i.e. the per-job target is
                     // not the real share gate on this pool. That has never once happened
@@ -1574,6 +1641,10 @@ private:
     // number can never be recycled by another subsystem while a thread still uses it.
     std::atomic<int> m_sock{-1};
     std::atomic<bool> m_running{false};
+    // Auth-failure escalation (see RequestAuthReconnect). m_auth_kick debounces one
+    // kick per connection and re-arms in ConnectAndHandshake.
+    bool m_auth_escalate{true};
+    std::atomic<bool> m_auth_kick{false};
     std::thread m_reader;
     std::thread m_metrics;
 

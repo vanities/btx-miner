@@ -73,6 +73,21 @@ int main()
 {
     std::printf("[stratum_dispatch_test]\n");
 
+    // ---- ReasonIsAuthFailure: which pool reject reasons mean "session auth is gone" ----
+    // The positive cases are real pool wordings (byron's is verbatim from a 2026-08-21
+    // probe); the negatives are the ordinary reject reasons that must NOT trigger a
+    // reconnect storm.
+    ok(ReasonIsAuthFailure("unauthorized: send mining.authorize first"), "auth: byron verbatim");
+    ok(ReasonIsAuthFailure("Unauthorized"), "auth: bare word, case-folded");
+    ok(ReasonIsAuthFailure("worker not authorized"), "auth: not authorized");
+    ok(ReasonIsAuthFailure("not authorised (gb spelling)"), "auth: not authorised");
+    ok(ReasonIsAuthFailure("please login first"), "auth: login first");
+    ok(!ReasonIsAuthFailure("job not found"), "no-auth: stale job");
+    ok(!ReasonIsAuthFailure("duplicate share"), "no-auth: duplicate");
+    ok(!ReasonIsAuthFailure("low difficulty share"), "no-auth: low diff");
+    ok(!ReasonIsAuthFailure(""), "no-auth: empty reason");
+    ok(!ReasonIsAuthFailure("block stale"), "no-auth: stale block");
+
     // ---- response-id tolerance (the reader-thread crash class) ----
     id_accepts("{\"id\":3,\"result\":true}", 3, "id int");
     id_accepts("{\"id\":\"3\",\"result\":true}", 3, "id STRING \"3\" (login pools)");

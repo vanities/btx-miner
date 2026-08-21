@@ -460,6 +460,7 @@ static void RunPoolLoop(const Config& cfg,
                                                          dev_user, cfg.pool_pass, &stats);
             dev_client->SetWorkerLabel(cfg.operator_label.empty() ? cfg.worker : cfg.operator_label);
             dev_client->SetTag("pool-dev");
+            dev_client->SetAuthEscalation(false);  // dev-side auth failure must never bounce the PRIMARY connection (shared Stats)
             dev_client->SetLogJobs(false);  // dev session prints job/switch lines only while its fee-window is active
             dev_client->SetSocks5(cfg.socks5_host, cfg.socks5_port, cfg.socks5_user, cfg.socks5_pass);
             dev_client->SetUseTls(endpoint.use_tls, cfg.pool_tls_insecure);

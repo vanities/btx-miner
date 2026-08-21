@@ -1,19 +1,19 @@
 {
-  "name": "LP_BTX_matador",
+  "name": "BTX_matador",
   "isFavorite": false,
   "items": [
     {
       "coin": "BTX",
       "pool_ssl": false,
       "pool_urls": [
-        "btx-us-east.lproute.com:8660",
-        "btx-eu.lproute.com:8660"
+        "stratum.minebtx.com:3333",
+        "stratum.btxbyronbay.com:3335"
       ],
       "dpool_ssl": false,
       "miner": "custom",
       "miner_alt": "matador-miner",
       "miner_config": {
-        "url": "stratum+tcp://btx-us-east.lproute.com:8660 stratum+tcp://btx-eu.lproute.com:8660",
+        "url": "stratum+tcp://stratum.minebtx.com:3333 stratum+tcp://stratum.btxbyronbay.com:3335",
         "algo": "btx",
         "pass": "x",
         "miner": "matador-miner",
