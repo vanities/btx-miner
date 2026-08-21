@@ -36,13 +36,22 @@ int main()
     eq_str(FmtDiff(3.0e12),   "3.00T",    "FmtDiff(3e12)");
     eq_str(FmtDiff(0.5),      "0.50000",  "FmtDiff(0.5)");
 
-    // ---- FmtRate: flat integer below 1000, dynamic units above; negative clamps to 0 ----
-    eq_str(FmtRate(873.0),    "873",      "FmtRate(873)");
+    // ---- FmtRate: ~4 significant digits everywhere; k/M/B/T above 1000 ----
+    eq_str(FmtRate(873.0),    "873.0",    "FmtRate(873)");
     eq_str(FmtRate(36320.0),  "36.32k",   "FmtRate(36320)");
     eq_str(FmtRate(1.2e6),    "1.20M",    "FmtRate(1.2e6)");
     eq_str(FmtRate(1.05e9),   "1.05B",    "FmtRate(1.05e9)");
     eq_str(FmtRate(2.3e12),   "2.30T",    "FmtRate(2.3e12)");
     eq_str(FmtRate(-5.0),     "0",        "FmtRate(-5)");
+    eq_str(FmtRate(0.0),      "0",        "FmtRate(0)");
+    // The v4 range. These are the ones the old flat-integer branch flattened to
+    // "1"/"0" -- a healthy 5090 (~1.47 ep/s) read as a stalled rig, and no
+    // clock-tuning delta was visible at all.
+    eq_str(FmtRate(1.4667),   "1.467",    "FmtRate(1.4667) keeps the ep/s delta");
+    eq_str(FmtRate(6.05),     "6.050",    "FmtRate(6.05) 5-card rig total");
+    eq_str(FmtRate(36.32),    "36.32",    "FmtRate(36.32)");
+    eq_str(FmtRate(0.9472),   "0.9472",   "FmtRate(0.9472) sub-1 ep/s");
+    eq_str(FmtRate(5.35e-05), "5.35e-05", "FmtRate(5.35e-05) norm/s at a small net-diff");
 
     // ---- FmtDuration: dynamic units, zero-padded second field ----
     eq_str(FmtDuration(45),       "45s",     "FmtDuration(45s)");

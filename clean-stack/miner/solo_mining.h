@@ -470,8 +470,18 @@ struct Stats {
         std::atomic<double> pool_episode_per_s{0.0};   // pool-credited rate, from accepted shares
         std::atomic<double> acc_per_hr{0.0};
     };
+    WindowAvg avg_5m;
     WindowAvg avg_1h;
     WindowAvg avg_24h;
+    // Instantaneous rate over the last heartbeat interval (~30s), published by BOTH the
+    // pool and the solo heartbeat. The windowed averages above are the right number for
+    // "what is this rig sustaining", but they are useless for the job an operator
+    // actually does with them -- tuning clocks -- because a 1h window moves by ~1/120th
+    // per tick after a change. This is the number that answers "did that +25 core help",
+    // and it is the one /summary consumers (HiveOS h-stats.sh) should lead with.
+    // rate_window_sec = 0 means no interval has elapsed yet, so the rate is not yet real.
+    std::atomic<double> rate_episode_per_s{0.0};
+    std::atomic<double> rate_window_sec{0.0};
 };
 
 static void WatchdogSetStatus(Stats& stats,

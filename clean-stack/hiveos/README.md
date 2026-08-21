@@ -10,7 +10,7 @@ Create a flight sheet with miner **Custom**, then click **Setup Miner Config** a
 | Field | Value |
 |---|---|
 | Miner name | `matador-miner` |
-| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.8.58/matador-miner-0.8.58.tar.gz` |
+| Installation URL | `https://github.com/vanities/matador-miner/releases/download/v0.9.26/matador-miner-0.9.26.tar.gz` |
 | Hash algorithm | `btx` |
 | Wallet and worker template | `%WAL%.%WORKER_NAME%` |
 | Pool URL | `stratum+tcp://btx-us-east.lproute.com:8660` |
@@ -43,16 +43,36 @@ or expired certificate needs `--pool-tls-insecure` in Extra config arguments.
   always available via the per-card status API the dashboard uses).
 - Ampere and newer only (RTX 30xx and up). A rig whose cards are all pre-Ampere
   stops with a clear message: ENC_RC needs tensor cores those cards do not have.
-- Reports rate, per GPU temperature, accepted and rejected shares to the HiveOS
-  dashboard.
+- Reports hashrate, per GPU temperature, accepted and rejected shares to the HiveOS
+  dashboard. See [Hashrate on the dashboard](#hashrate-on-the-dashboard) for why the
+  number is a handful of H/s rather than MH/s.
 - Works with both stratum pools and login style pools (LuckyPool). Solo mining
   through a pool that supports it: use `solo:%WAL%.%WORKER_NAME%` as the template.
 - Multiple pool URLs (space separated) become primary plus fallbacks.
 
-## Health: what a working v4 rig looks like
+## Hashrate on the dashboard
 
-ENC_RC's unit of work is the **episode**: one full dependent INT8 GEMM chain for one
-nonce, roughly 825 ms on a 5090. So the rate is small and fractional by design.
+**A healthy card reads about 1.2-1.5 H/s. That is correct, not a broken counter.**
+
+ENC_RC's unit of work is the **episode**: one episode is one nonce fully tried, so
+episodes/s *is* hashrate in the classic sense. It is just that a v4 nonce costs a full
+dependent INT8 GEMM chain (~825 ms on a 5090) instead of one SHA256, so the honest
+number is single-digit H/s rather than tens of MH/s. HiveOS is given that same figure,
+so what you see on the dashboard, in `curl localhost:4060/summary`, and on the miner
+log's `[stats]` line all agree.
+
+Use it for OC tuning: the reported figure is the **live** rate over the last heartbeat
+(~30s), so a clock change shows up within a minute or two rather than being averaged
+away. Watch the per-GPU column next to the card you are tuning.
+
+> Rigs on **v0.9.24 and older reported a flat 0 H/s** here no matter how well they were
+> mining: `h-stats.sh` was still reading the v3 `nonce_per_s` field, which nothing has
+> emitted since v4 replaced nonces with episodes. The same release also printed the
+> `[stats]` line's rates as truncated integers, so `ep/s=1.4` logged as `ep/s=1` and
+> anything below 1 logged as `0`. Update the flight sheet's Installation URL to
+> v0.9.26 or newer.
+
+## Health: what a working v4 rig looks like
 
 ```
 grep '\[stats\]' /var/log/miner/custom/custom.log | tail -1
@@ -84,5 +104,13 @@ and reapply the flight sheet. The miner log notes when a newer release exists.
 - Miner log: `/var/log/miner/custom/custom.log` (or `miner log` in the shell).
 - The status API listens on `127.0.0.1:4060` (one port per GPU counting up):
   `curl -s localhost:4060/summary | jq .`
-- No hashrate on the dashboard usually means the miner failed to start; check
-  the log for a config error (bad wallet address or unreachable pool).
+- A dashboard hashrate of a few H/s is normal — see
+  [Hashrate on the dashboard](#hashrate-on-the-dashboard). A flat **0** on v0.9.24 or
+  older is the fixed `nonce_per_s` bug described there; update the Installation URL.
+- Otherwise no hashrate usually means the miner failed to start, or started but never
+  latched RC. Check the log for a config error (bad wallet address, unreachable pool)
+  and confirm `rc-active=1` on the `[stats]` line.
+- To see what HiveOS is being told, run the package's own stats hook:
+  `MATADOR_HIVE_DIR=/hive/miners/custom/matador-miner bash /hive/miners/custom/matador-miner/h-stats.sh`
+  It prints the exact `khs:` and `stats:` the agent uploads. `khs` is in kH/s by HiveOS
+  contract, so `0.00124` there is the `1.24 H/s` the dashboard shows.

@@ -475,8 +475,20 @@ static std::string BuildSummaryJson(const Config& cfg,
               static_cast<int32_t>(g_pool_block_height.load(std::memory_order_relaxed)))
               ? "true" : "false")
       << "}"
+      // Live rate over the last heartbeat interval. LEAD WITH THIS for anything that
+      // displays or tunes: the windowed averages below are the sustained-throughput
+      // numbers, but a 1h window barely moves within minutes of a clock change, and on
+      // the solo path it has no history behind it at all. window_sec 0 = not real yet.
+      << ",\"rate\":{"
+      << "\"episode_per_s\":" << jnumg(stats.rate_episode_per_s.load(std::memory_order_relaxed))
+      << ",\"window_sec\":" << jnum(stats.rate_window_sec.load(std::memory_order_relaxed))
+      << "}"
       << ",\"averages\":{"
-      << "\"1h\":{"
+      << "\"5m\":{"
+      << "\"episode_per_s\":" << jnumg(stats.avg_5m.episode_per_s.load(std::memory_order_relaxed))
+      << ",\"pool_episode_per_s\":" << jnumg(stats.avg_5m.pool_episode_per_s.load(std::memory_order_relaxed))
+      << ",\"acc_per_hr\":" << jnum(stats.avg_5m.acc_per_hr.load(std::memory_order_relaxed))
+      << "},\"1h\":{"
       << "\"episode_per_s\":" << jnumg(stats.avg_1h.episode_per_s.load(std::memory_order_relaxed))
       << ",\"pool_episode_per_s\":" << jnumg(stats.avg_1h.pool_episode_per_s.load(std::memory_order_relaxed))
       << ",\"acc_per_hr\":" << jnum(stats.avg_1h.acc_per_hr.load(std::memory_order_relaxed))

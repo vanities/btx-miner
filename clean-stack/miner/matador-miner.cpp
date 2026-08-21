@@ -1542,6 +1542,13 @@ int main(int argc, char* argv[])
              << " pools=" << pool_count
              << " user=" << cfg.payoutaddress << "." << cfg.worker
              << " (dev-fee/coinbase disabled; pool owns payout)");
+        // One-time units explainer. Operators arrive expecting a MH/s-shaped number and
+        // read the small one on the [stats] line as "no hashrate at all".
+        LOGI("[init] throughput is reported as ep/s on the [stats] line below. One ENC_RC "
+             "episode is one nonce fully tried, so ep/s IS your hashrate in H/s -- it is "
+             "small because a v4 nonce costs a full dependent INT8 GEMM chain (~825ms on a "
+             "5090, so ~1.2-1.5 H/s per card) rather than one SHA256. HiveOS and the status "
+             "API report that same number.");
 
         Stats stats;
         std::atomic<bool> stop_all{false};
@@ -1665,8 +1672,13 @@ int main(int argc, char* argv[])
                     }
                     return r;
                 };
-                const WinAvg avg1h = win_avg(3600.0), avg24h = win_avg(86400.0);
+                const WinAvg avg5m = win_avg(300.0), avg1h = win_avg(3600.0), avg24h = win_avg(86400.0);
                 // publish to shared state so the status API's /summary can serve the same averages
+                stats.rate_episode_per_s.store(dt > 0 ? d_eps / dt : 0.0, std::memory_order_relaxed);
+                stats.rate_window_sec.store(dt, std::memory_order_relaxed);
+                stats.avg_5m.episode_per_s.store(avg5m.eps, std::memory_order_relaxed);
+                stats.avg_5m.pool_episode_per_s.store(avg5m.pool, std::memory_order_relaxed);
+                stats.avg_5m.acc_per_hr.store(avg5m.sh_hr, std::memory_order_relaxed);
                 stats.avg_1h.episode_per_s.store(avg1h.eps, std::memory_order_relaxed);
                 stats.avg_1h.pool_episode_per_s.store(avg1h.pool, std::memory_order_relaxed);
                 stats.avg_1h.acc_per_hr.store(avg1h.sh_hr, std::memory_order_relaxed);
@@ -1854,6 +1866,11 @@ int main(int argc, char* argv[])
             const uint64_t d_win = (p.solve_windows >= prev_win)
                                       ? (p.solve_windows - prev_win) : p.solve_windows;
             prev_eps = rc_eps; prev_win = p.solve_windows; prev_t = now;
+            // Publish the live rate for /summary. Solo has no rolling-average history
+            // (below), so without this a solo rig served averages of 0 forever and every
+            // /summary consumer -- HiveOS included -- read a working rig as doing nothing.
+            stats.rate_episode_per_s.store(dt > 0 ? d_eps / dt : 0.0, std::memory_order_relaxed);
+            stats.rate_window_sec.store(dt, std::memory_order_relaxed);
             const bool child_quiet = mgpu::IsChild() && !mgpu::ChildConsoleStatsEnabled();
             if (!child_quiet)
             LOGI("[stats] uptime=" << FmtDuration(static_cast<uint64_t>(up_s))

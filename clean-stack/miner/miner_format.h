@@ -61,16 +61,32 @@ static std::string FmtDiff(double v)
     return os.str();
 }
 
-// Rate formatter: flat integer below 1000, dynamic k/M/B/T above
-// (e.g. 873, 36.32k, 1.20M, 1.05B, 2.30T) -- so scan/nonce rates roll units cleanly.
+// Rate formatter: ~4 significant digits across the whole range -- dynamic k/M/B/T
+// above 1000 (36.32k, 1.20M, 1.05B, 2.30T), decimals below it (873.0, 36.32, 1.467,
+// 0.9472, 5.35e-05).
+//
+// The decimals below 1000 are not cosmetic. This used to print a flat INTEGER there,
+// which was fine for v3 nonce rates in the thousands but silently destroyed every
+// number on the v4 [stats] line: one ENC_RC episode is a full dependent INT8 GEMM
+// chain for one nonce (~825 ms on a 5090), so a healthy card sits near 1.2-1.5 ep/s
+// and norm/s can be ~1e-5 at a small net-diff. The cast rendered those as "ep/s=1
+// norm/s=0 pool-ep/s=0" -- i.e. a fully healthy rig looked like it was doing nothing,
+// and no clock-tuning A/B delta could be read off the log at all.
 static std::string FmtRate(double v)
 {
+    // Non-positive AND NaN land here (the old uint64_t cast made NaN UB).
+    if (!(v > 0.0)) return "0";
     std::ostringstream os;
-    if (v >= 1e12)     os << std::fixed << std::setprecision(2) << v / 1e12 << 'T';
-    else if (v >= 1e9) os << std::fixed << std::setprecision(2) << v / 1e9 << 'B';
-    else if (v >= 1e6) os << std::fixed << std::setprecision(2) << v / 1e6 << 'M';
-    else if (v >= 1e3) os << std::fixed << std::setprecision(2) << v / 1e3 << 'k';
-    else               os << static_cast<uint64_t>(v < 0.0 ? 0.0 : v);
+    if (v >= 1e12)      os << std::fixed << std::setprecision(2) << v / 1e12 << 'T';
+    else if (v >= 1e9)  os << std::fixed << std::setprecision(2) << v / 1e9 << 'B';
+    else if (v >= 1e6)  os << std::fixed << std::setprecision(2) << v / 1e6 << 'M';
+    else if (v >= 1e3)  os << std::fixed << std::setprecision(2) << v / 1e3 << 'k';
+    else if (v >= 100)  os << std::fixed << std::setprecision(1) << v;
+    else if (v >= 10)   os << std::fixed << std::setprecision(2) << v;
+    else if (v >= 1)    os << std::fixed << std::setprecision(3) << v;
+    // Sub-1 keeps SIGNIFICANT digits rather than fixed decimals: a fixed format would
+    // flatten norm/s at a 3.6e-05 net-diff back to "0.00000".
+    else                os << std::setprecision(4) << v;
     return os.str();
 }
 

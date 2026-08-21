@@ -3,6 +3,12 @@
 
 cd "$(dirname "$0")" || exit 1
 . ./h-manifest.conf
+# Test override: MATADOR_HIVE_DIR points at an unpacked package dir, so the whole
+# h-config -> h-run -> h-stats chain can be driven off a real rig. h-config.sh and
+# h-stats.sh already honoured it; without it here the run leg still looked for the
+# manifest's absolute /hive/... config path and could only ever be tested on HiveOS.
+[[ -n "${MATADOR_HIVE_DIR:-}" && -e "$MATADOR_HIVE_DIR/h-manifest.conf" ]] && \
+    CUSTOM_CONFIG_FILENAME="$MATADOR_HIVE_DIR/matador-miner.conf"
 
 LOG_DIR=$(dirname "$CUSTOM_LOG_BASENAME")
 [[ ! -d "$LOG_DIR" ]] && mkdir -p "$LOG_DIR"
